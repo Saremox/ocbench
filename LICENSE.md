@@ -1,5 +1,4 @@
 # License
----
 **openCompressBench**
 
 Copyright (C) 2016 Michael Strassberger <saremox@linux.com>

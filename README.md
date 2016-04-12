@@ -1,5 +1,4 @@
 # Readme
----
 This project is aiming to assists people by the decision
 what compression algorithm fits best for their data
 and runtime requirements. For a given input data series
