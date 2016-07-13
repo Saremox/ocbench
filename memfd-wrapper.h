@@ -2,6 +2,7 @@
 #include <linux/memfd.h>
 #include <sys/syscall.h>
 #include <fcntl.h>
+#include "debug.h"
 
 #ifndef MEMFD_WRAPPER_INC
 #define MEMFD_WRAPPER_INC
@@ -17,12 +18,21 @@
 
 static inline long memfd_create(char* name, int flags)
 {
-  return syscall(__NR_memfd_create,name,flags);
+  long fd = syscall(__NR_memfd_create,name,flags);
+  check(fd > 0, "failed to create %s memfd file descriptor with 0x%x flags",
+        name, flags);
+  return fd;
+error:
+  return -1;
 }
 
 static inline int memfd_is_flag_set(long int fd, int flag)
 {
-  return (fd != 0 && fcntl(fd,F_GET_SEALS,NULL) & flag);
+  check(fd != 0, "invalid file discriptor");
+  check(flag & 0b111, "unknown flag 0x%x", flag);
+  return fcntl(fd,F_GET_SEALS,NULL) & flag;
+error:
+  return -1;
 }
 
 static inline int memfd_is_writeable(long int fd)
