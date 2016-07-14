@@ -8,5 +8,4 @@ include_directories("${PROJECT_SOURCE_DIR}/src"
                     "${PROJECT_BINARY_DIR}/src")
 
 add_subdirectory(src)
-enable_testing()
 add_subdirectory(test)
