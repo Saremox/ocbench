@@ -4,11 +4,9 @@ project(openCompressBench)
 set (OCBENCH_VERSION_MAJOR 0)
 set (OCBENCH_VERSION_MINOR 1)
 
-configure_file(
-  "${PROJECT_SOURCE_DIR}/ocbenchConfig.h.in"
-  "${PROJECT_BINARY_DIR}/ocbenchConfig.h"
-)
+include_directories("${PROJECT_SOURCE_DIR}/src"
+                    "${PROJECT_BINARY_DIR}/src")
 
-include_directories("${PROJECT_BINARY_DIR}")
-
-add_executable(ocBench ocbench.c)
+add_subdirectory(src)
+enable_testing()
+add_subdirectory(test)
