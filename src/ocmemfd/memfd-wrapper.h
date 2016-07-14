@@ -11,10 +11,10 @@
 #define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
 #define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
 
-#define F_SEAL_SEAL     1>>1
-#define F_SEAL_SHRINK   1>>2
-#define F_SEAL_GROW     1>>3
-#define F_SEAL_WRITE    1>>4
+#define F_SEAL_SEAL     1<<1
+#define F_SEAL_SHRINK   1<<2
+#define F_SEAL_GROW     1<<3
+#define F_SEAL_WRITE    1<<4
 
 static inline long memfd_create(char* name, int flags)
 {
@@ -29,7 +29,7 @@ error:
 static inline int memfd_is_flag_set(long int fd, int flag)
 {
   check(fd != 0, "invalid file discriptor");
-  check(flag & 0b111, "unknown flag 0x%x", flag);
+  check(flag & 0b1111, "unknown flag 0x%x", flag);
   return fcntl(fd,F_GET_SEALS,NULL) & flag;
 error:
   return -1;
