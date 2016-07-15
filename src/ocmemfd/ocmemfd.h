@@ -22,14 +22,20 @@ typedef enum {
   OCMEMFD_REMMAP_FAILURE}
 ocMemfdStatus;
 
-ocMemfdContext * ocmemfd_create_context(
+/** Creates a new context and manages systemcall for new memfd pointer
+  * and memory maps it into virtual address space. See ocMemfdContext
+  */
+ocMemfdContext * /**< [out] valid context for usage in ocmemfd functions */
+ocmemfd_create_context(
   char* path, /**< [in] the path in the kernel memfd file system */
   size_t size /**< [in] the desired size of the memfd*/
 );
-ocMemfdStatus    ocmemfd_map_buffer(
-  ocMemfdContext * ctx  /**< [in,out] the context */
-);
-ocMemfdStatus    ocmemfd_resize(
+
+/** Resizes the given memfd in memfdcontext to newsize
+  * set memory map accordingly
+  */
+ocMemfdStatus /**< [out] on success OCMEMFD_SUCCESS */
+ocmemfd_resize(
   ocMemfdContext * ctx, /**< [in,out] the context */
   size_t newsize /**< [in] the new desired size of the memfd */
 );
