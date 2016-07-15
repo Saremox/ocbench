@@ -38,8 +38,8 @@ ocsched_fork_process(ocschedFunction work_function, char* childname, void* data)
     close(master[PIPE_READ]);
     close(child[PIPE_WRITE]);
 
-    ctx->comm.pipe_in = master[PIPE_WRITE];
-    ctx->comm.pipe_out = child[PIPE_READ];
+    ctx->comm.pipe_in = child[PIPE_READ];
+    ctx->comm.pipe_out = master[PIPE_WRITE];
 
     check(prctl(PR_SET_NAME,childname) ==0,"failed to set child name");
 
