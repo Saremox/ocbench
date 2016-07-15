@@ -18,23 +18,25 @@
 #define oc_assert_str_equal(expected, got) if(strcmp(expected,got) != 0) {\
   oc_unit_output("expected \"%s\" but got \"%s\"",expected,got );\
   return OCUNITFAILURE;}
-#define oc_run_test(test) printf("\n│  ├─ Case #%04d%-40s:",tests_run, " " #test); \
-  lastret = test();\
-  tests_run++;\
-  if(lastret != 0)\
+#define oc_run_test(test) printf("\n│  ├─ Case #%04d%-40s:",ocunit_run_tests, " " #test); \
+  fflush(stdout);\
+  ocunit_last_return = test();\
+  ocunit_run_tests++;\
+  if(ocunit_last_return != 0)\
     return -1;\
   printf(" PASSED");\
-  passed_test++;\
+  ocunit_passed_tests++;\
 
 #define RUN_TESTS(name) int main(int argc, char *argv[]) {\
     argc = 1; \
     printf("├─ RUNNING: %s", argv[0]);\
         name();\
-    printf("\n│  └─ Tests passed : %d out of %d\n", passed_test, tests_run);\
+    printf("\n│  └─ Tests passed : %d out of %d\n",\
+           ocunit_passed_tests, ocunit_run_tests);\
         exit(0);\
 }
 
-int passed_test;
-int tests_run;
-int lastret;
+int ocunit_passed_tests;
+int ocunit_run_tests;
+int ocunit_last_return;
 #endif
