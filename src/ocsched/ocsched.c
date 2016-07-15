@@ -59,3 +59,23 @@ error:
     log_err("failed to fork process");
   }
 }
+
+size_t
+ocsched_sendto(ocschedProcessContext * ctx, char * buf, size_t n)
+{
+  int written;
+  check((written = write(ctx->comm.pipe_out,buf,n)) >= 0," write failed");
+  return written;
+error:
+  return OCSCHED_FAILURE;
+}
+
+size_t
+ocsched_recvfrom(ocschedProcessContext * ctx, char * buf, size_t n)
+{
+  int readed;
+  check((readed = read(ctx->comm.pipe_in,buf,n)) >= 0, " read failed");
+  return readed;
+error:
+  return OCSCHED_FAILURE;
+}

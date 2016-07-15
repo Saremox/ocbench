@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #ifndef OCSCHEDH
 #define OCSCHEDH
 
@@ -15,7 +17,8 @@ typedef struct {
 typedef void (*ocschedFunction)(ocschedProcessContext*,void*);
 
 typedef enum {
-  OCSCHED_SUCCESS
+  OCSCHED_SUCCESS,
+  OCSCHED_FAILURE = -1
 } ocschedStatus;
 
 ocschedProcessContext *
@@ -25,8 +28,18 @@ ocsched_fork_process(
   void* data /**< [in] pointer with addional data for the child */
 );
 
+size_t /**< [out] bytes written or OCSCHED_FAILURE on failure */
+ocsched_sendto(
+  ocschedProcessContext * ctx, /**< [in] context which will be send to */
+  char * buf, /**< [in] buffer which will be send */
+  size_t n /**< [in] number of bytes which will be send */
+);
 
-
-
+size_t /**< [out] bytes readed or OCSCHED_FAILURE on failure */
+ocsched_recvfrom(
+  ocschedProcessContext * ctx, /**< [in] context which will be recv from */
+  char * buf, /**< [out] buffer in which will be recv */
+  size_t n /**< [in] maximum byte count which will be recv */
+);
 
 #endif
