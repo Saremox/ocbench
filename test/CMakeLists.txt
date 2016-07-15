@@ -1,4 +1,5 @@
 add_executable(Testocmemfd Testocmemfd.c)
+add_executable(Testocunit Testocunit.c)
 target_link_libraries(Testocmemfd ocmemfd)
 
 add_custom_target("test"
