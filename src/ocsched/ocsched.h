@@ -1,4 +1,6 @@
 #include <unistd.h>
+#include <mqueue.h>
+//#include <squash/squash.h>
 
 #ifndef OCSCHEDH
 #define OCSCHEDH
@@ -11,8 +13,14 @@ typedef struct {
 typedef struct {
   int pid;
   char* name;
+  mqd_t workQueue;
   ocschedCommunicator comm;
 } ocschedProcessContext;
+
+typedef struct {
+  const char * codec;
+  // SquashOptions * options
+} ocschedJob;
 
 typedef void (*ocschedFunction)(ocschedProcessContext*,void*);
 
@@ -40,6 +48,18 @@ ocsched_recvfrom(
   ocschedProcessContext * ctx, /**< [in] context which will be recv from */
   char * buf, /**< [out] buffer in which will be recv */
   size_t n /**< [in] maximum byte count which will be recv */
+);
+
+ocschedStatus
+ocsched_schedule_job(
+  ocschedProcessContext * ctx, /**< [in] context which will be recv from */
+  ocschedJob * job /**< [in] job which get scheduled */
+);
+
+ocschedStatus
+ocsched_get_job(
+  ocschedProcessContext * ctx, /**< [in] context which will be recv from */
+  ocschedJob * job /**< [out] pointer in which we store the job */
 );
 
 #endif

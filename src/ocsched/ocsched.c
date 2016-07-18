@@ -3,15 +3,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/prctl.h>
 
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
+#define NAME_MAX 128
+
+mqd_t global_job_queue = 0;
+
+mqd_t
+ocsched_get_msgq()
+{
+  char msgQname[NAME_MAX];
+  if(global_job_queue > 0)
+    return global_job_queue;
+
+  sprintf(msgQname,"/ocbench-work-queue-%d",getpid());
+  check(global_job_queue = mq_open(msgQname,
+    O_CREAT | O_RDWR | O_CLOEXEC,
+    S_IRUSR | S_IWUSR, NULL),"Couldn't create work queue");
+
+  return global_job_queue;
+error:
+  return -1;
+}
+
 ocschedProcessContext * \
 ocsched_fork_process(ocschedFunction work_function, char* childname, void* data)
 {
   ocschedProcessContext * ctx = malloc(sizeof(ocschedProcessContext));
+  check((ctx->workQueue = ocsched_get_msgq()) > 0,"Couldn't get work queue");
   ctx->name = malloc(strlen(childname)+1);
   strcpy(ctx->name,childname);
 
