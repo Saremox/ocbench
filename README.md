@@ -20,7 +20,28 @@ Than you finished creating the cmake build environment you only need to invoke
 test you can now test the application or install it with `make install`
 
 **Note:** in the current state of development
-`ocbench` does nothing.
+`ocbench` only is capable of compressing one file and showing compressed size of
+the file.
+
+## Basic usage
+
+```
+$ ./ocBench
+./ocBench openCompressBench Version 0.1
+Copyright (C) 2016 Michael Strassberger <saremox@linux.com>
+openCompressBench comes with ABSOLUTELY NO WARRANTY; for details
+type `show w'.  This is free software, and you are welcome
+to redistribute it under certain conditions; type `show c'
+for details.
+
+Usage: ./ocBench FILE_PATH
+
+
+$ ./ocBench ocBench
+Recv from child: compressed from 21296 bytes to 6456 bytes with lzma
+```
+
+
 
 ## License
 
