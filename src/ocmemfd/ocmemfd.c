@@ -62,8 +62,8 @@ ocMemfdStatus ocmemfd_resize(ocMemfdContext * ctx, size_t newsize)
     if( ! memfd_is_shrinkable(ctx->fd))
       return OCMEMFD_NOT_SHRINKABLE;
   check(ftruncate(ctx->fd,newsize) == 0, "cannot set new size");
-  check(ocmemfd_remap_buffer(ctx,oldsize) == OCMEMFD_SUCCESS, "resizing memory map failed");
   ctx->size = newsize;
+  check(ocmemfd_remap_buffer(ctx,oldsize) == OCMEMFD_SUCCESS, "resizing memory map failed");
   return OCMEMFD_SUCCESS;
 error:
   return OCMEMFD_RESIZE_FAILURE;
