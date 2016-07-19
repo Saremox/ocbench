@@ -18,6 +18,9 @@
 #define oc_assert_str_equal(expected, got) if(strcmp(expected,got) != 0) {\
   oc_unit_output("expected \"%s\" but got \"%s\"",expected,got );\
   return OCUNITFAILURE;}
+#define oc_assert_mem_equal(expected, got, size) if(memcmp(expected,got,size) != 0) {\
+  oc_unit_output("expected \"%s\" but got \"%s\"",expected,got );\
+  return OCUNITFAILURE;}
 #define oc_run_test(test) printf("\n│  ├─ Case #%04d%-40s:",ocunit_run_tests, " " #test); \
   fflush(stdout);\
   ocunit_last_return = test();\
