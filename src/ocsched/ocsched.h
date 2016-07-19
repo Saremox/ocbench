@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <mqueue.h>
-//#include <squash/squash.h>
+#include <squash.h>
 
 #ifndef OCSCHEDH
 #define OCSCHEDH
@@ -19,7 +19,7 @@ typedef struct {
 
 typedef struct {
   const char * codec;
-  // SquashOptions * options
+  SquashOptions * options;
 } ocschedJob;
 
 typedef void (*ocschedFunction)(ocschedProcessContext*,void*);
@@ -41,6 +41,13 @@ ocsched_sendto(
   ocschedProcessContext * ctx, /**< [in] context which will be send to */
   char * buf, /**< [in] buffer which will be send */
   size_t n /**< [in] number of bytes which will be send */
+);
+
+ocschedStatus
+ocsched_printf(
+  ocschedProcessContext * ctx, /**< [in] context which will be send to */
+  char * fmtstr,
+  ...
 );
 
 size_t /**< [out] bytes readed or OCSCHED_FAILURE on failure */

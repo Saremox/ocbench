@@ -2,6 +2,7 @@
 #include "debug.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -92,6 +93,15 @@ ocsched_sendto(ocschedProcessContext * ctx, char * buf, size_t n)
   return written;
 error:
   return OCSCHED_FAILURE;
+}
+
+ocschedStatus
+ocsched_printf(ocschedProcessContext * ctx,char * fmtstr,...)
+{
+  va_list ap;
+  va_start(ap,fmtstr);
+  vdprintf(ctx->comm.pipe_out,fmtstr,ap);
+  va_end(ap);
 }
 
 size_t
