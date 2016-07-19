@@ -97,30 +97,19 @@ int TestLoadFileIntoMemfd()
   char * path = "./Testocmemfd";
   char * memorymap;
 
-  oc_unit_output("test %s\n",path);
   if(stat(path,&st) ==0)
     filesize = st.st_size;
   else
     log_err("cannot stat %s for testing",path);
 
-  oc_unit_output("Open %s in memfd\n",path);
   oc_assert(ocmemfd_load_file(fd,path) == OCMEMFD_SUCCESS, "failed to load file");
-  oc_unit_output("Open %s and memory map it",path);
   file = open(path,0,'r');
   memorymap = mmap(NULL, filesize, PROT_READ,MAP_PRIVATE, file,0);
 
   oc_assert(memorymap != MAP_FAILED, "failed to memorymap test file");
-  oc_unit_output("Beginning to compare memory of size %d",filesize);
-  oc_unit_output("fd->buf points to 0x%x",fd->buf);
-  oc_unit_output("memorymap points to 0x%x",memorymap);
-  sleep(2);
   for (size_t i = 0; i < filesize; i++) {
-    oc_unit_output("test memorymap[%d] and fd->buf[%d] are equal\n",i,i);
-    oc_unit_output("memorymap[%d] = 0x%x\n",i,memorymap[i]);
-    oc_unit_output("fd->buf[%d] = 0x%x\n",i,fd->buf[i]);
     oc_assert_equal(memorymap[i],fd->buf[i]);
   }
-  oc_unit_output("Done memory test\n");
   oc_assert_mem_equal(memorymap,fd->buf,filesize-1);
 
   munmap(memorymap,filesize);

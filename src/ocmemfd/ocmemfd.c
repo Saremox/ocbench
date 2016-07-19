@@ -89,14 +89,9 @@ ocmemfd_load_file(ocMemfdContext * ctx, char* path)
     int readBytes = 0;
     while(readBytes < filesize)
     {
-      debug("allready read %d bytes from %d",readBytes,filesize);
-      int ret = read(file,ctx->buf+readBytes,4096);
-      if(ret > 0)
-      {
-        readBytes += ret;
-        continue;
-      }
-      check(ret == 0,"cannot read from file. %d bytes have been read",readBytes);
+      int ret = read(file,ctx->buf+readBytes,filesize);
+      readBytes += ret;
+      check(ret >= 0,"cannot read from file. %d bytes have been read",readBytes);
     }
     check(readBytes == filesize,
       "only read %d from %d bytes",readBytes,filesize);
