@@ -9,24 +9,13 @@ ratio and time needed for each algorithm thats supported.
 ## Compiling
 
 openCompressBench uses https://github.com/quixdb/squash as a backend.
-to meet this dependency you can either:
-  1. compile squash yourself
-  2. add `-DBUILD_SQUASH=1` as an cmake argument
+to meet this dependency you have to compile squash for yourself or install
+it through a package system if it's available on your system.
 
-### Compilation with SQUASH prefinstalled
-Your have to ensure that your local compiler installation can find squash's
-header and library files to compile openCompressBench successfully
-```
-$ cmake
-```
-
-### Compilation with SQUASH not prefinstalled
-You have to ensure to meet all dependencies of squash to get a successful build.
-```
-$ cmake -DBUILD_SQUASH=1
-```
-
-Than u finished creating the cmake build enviroment you only need to invoke
+After you met the dependencies you just need to call `cmake` in the cloned
+directory or at any location you want with the -B switch of cmake see
+`man cmake`.
+Than you finished creating the cmake build environment you only need to invoke
 `make`. To test your build type `make test`. If doesn't complain about failed
 test you can now test the application or install it with `make install`
 
