@@ -95,7 +95,7 @@ int TestLoadFileIntoMemfd()
   struct stat st;
   off_t filesize = 0;
   char * path = "./Testocmemfd";
-  char * memorymap;
+  uint8_t * memorymap;
 
   if(stat(path,&st) ==0)
     filesize = st.st_size;

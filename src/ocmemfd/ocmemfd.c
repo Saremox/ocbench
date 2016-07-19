@@ -84,7 +84,7 @@ ocmemfd_load_file(ocMemfdContext * ctx, char* path)
   check(ocmemfd_resize(ctx,filesize) == OCMEMFD_SUCCESS,
     "cannot resize memfd to %d bytes",filesize);
 
-  if((file = open(path,0, "r")))
+  if((file = open(path,0, "r+b")))
   {
     int readBytes = 0;
     while(readBytes < filesize)

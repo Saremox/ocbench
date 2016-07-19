@@ -1,6 +1,7 @@
 #include "memfd-wrapper.h"
 
 #include <sys/mman.h>
+#include <stdint.h>
 
 #ifndef OCMENFDH
 #define OCMENFDH
@@ -8,7 +9,7 @@
 typedef struct {
   long int  fd;   /*!< file descriptor which is holding the memfd */
   size_t    size; /*!< current size of memfd */
-  char*     buf;  /*!< current address of memory maping of the memfd*/
+  uint8_t*     buf;  /*!< current address of memory maping of the memfd*/
 } ocMemfdContext;
 
 typedef enum {
