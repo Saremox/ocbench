@@ -69,4 +69,11 @@ ocsched_get_job(
   ocschedJob * job /**< [out] pointer in which we store the job */
 );
 
+ocschedStatus
+ocsched_destroy_context(
+  ocschedProcessContext ** ctx /**< [in] context which will be recv from */
+);
+
+ocschedStatus
+ocsched_destroy_global_mqueue();
 #endif

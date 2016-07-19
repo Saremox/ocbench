@@ -113,3 +113,23 @@ ocsched_recvfrom(ocschedProcessContext * ctx, char * buf, size_t n)
 error:
   return OCSCHED_FAILURE;
 }
+
+ocschedStatus
+ocsched_destroy_context(ocschedProcessContext ** ctx)
+{
+  close((*ctx)->comm.pipe_in);
+  close((*ctx)->comm.pipe_in);
+  free((*ctx)->name);
+  free((*ctx));
+  (*ctx) = 0;
+  return OCSCHED_SUCCESS;
+}
+
+ocschedStatus
+ocsched_destroy_global_mqueue()
+{
+  char msgQname[NAME_MAX];
+  sprintf(msgQname,"/ocbench-work-queue-%d",getpid());
+  mq_unlink(msgQname);
+  return OCSCHED_SUCCESS;
+}
