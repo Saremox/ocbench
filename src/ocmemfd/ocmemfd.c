@@ -1,9 +1,11 @@
 #include "ocmemfd.h"
+#include "debug.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include "debug.h"
+#include <unistd.h>
+#include <sys/stat.h>
 
 ocMemfdContext * ocmemfd_create_context(char* path, size_t size)
 {
@@ -65,4 +67,61 @@ ocMemfdStatus ocmemfd_resize(ocMemfdContext * ctx, size_t newsize)
   return OCMEMFD_SUCCESS;
 error:
   return OCMEMFD_RESIZE_FAILURE;
+}
+
+ocMemfdStatus
+ocmemfd_load_file(ocMemfdContext * ctx, char* path)
+{
+  int file;
+  off_t filesize = 0;
+  struct stat st;
+  check(ctx->fd > 0 || ctx->size <= 0, "not a valid context");
+  if(stat(path,&st) ==0)
+    filesize = st.st_size;
+  else
+    return OCMEMFD_CANNOT_GET_FILE_SIZE;
+
+  check(ocmemfd_resize(ctx,filesize) == OCMEMFD_SUCCESS,
+    "cannot resize memfd to %d bytes",filesize);
+
+  if((file = open(path,0, "r")))
+  {
+    int readBytes = 0;
+    while(readBytes < filesize)
+    {
+      debug("allready read %d bytes from %d",readBytes,filesize);
+      int ret = read(file,ctx->buf+readBytes,4096);
+      if(ret > 0)
+      {
+        readBytes += ret;
+        continue;
+      }
+      check(ret == 0,"cannot read from file. %d bytes have been read",readBytes);
+    }
+    check(readBytes == filesize,
+      "only read %d from %d bytes",readBytes,filesize);
+  }
+  else
+    return OCMEMFD_CANNOT_READ;
+
+  close(file);
+  return OCMEMFD_SUCCESS;
+error:
+  return OCMEMFD_LOADFILE_FAILURE;
+}
+
+ocMemfdStatus
+ocmemfd_destroy_context(ocMemfdContext ** ctx)
+{
+  if((*ctx)->buf > 0)
+  {
+    check(munmap((*ctx)->buf,(*ctx)->size) == 0, "failed to memory unmap memfd");
+    (*ctx)->buf = 0; // Reset pointer
+  }
+  close((*ctx)->fd);
+  free((*ctx));
+  (*ctx) = 0;
+  return OCMEMFD_SUCCESS;
+error:
+  return OCMEMFD_FATAL_FAILURE;
 }

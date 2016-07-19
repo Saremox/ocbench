@@ -13,13 +13,18 @@ typedef struct {
 
 typedef enum {
   OCMEMFD_SUCCESS,
+  OCMEMFD_FATAL_FAILURE,
   OCMEMFD_NOT_WRITEABLE,
   OCMEMFD_NOT_GROWABLE,
   OCMEMFD_NOT_SHRINKABLE,
   OCMEMFD_ALLREDY_MMAPED,
   OCMEMFD_RESIZE_FAILURE,
   OCMEMFD_MMAP_FAILURE,
-  OCMEMFD_REMMAP_FAILURE}
+  OCMEMFD_REMMAP_FAILURE,
+  OCMEMFD_LOADFILE_FAILURE,
+  OCMEMFD_CANNOT_READ,
+  OCMEMFD_CANNOT_GET_FILE_SIZE
+}
 ocMemfdStatus;
 
 /** Creates a new context and manages systemcall for new memfd pointer
@@ -38,6 +43,23 @@ ocMemfdStatus /**< [out] on success OCMEMFD_SUCCESS */
 ocmemfd_resize(
   ocMemfdContext * ctx, /**< [in,out] the context */
   size_t newsize /**< [in] the new desired size of the memfd */
+);
+
+ocMemfdStatus
+ocmemfd_remap_buffer(
+  ocMemfdContext * ctx, /**< [in,out] the context */
+  size_t oldsize /**< [in] the old size of the memfd */
+);
+
+ocMemfdStatus /**< [out] on success OCMEMFD_SUCCESS */
+ocmemfd_load_file(
+  ocMemfdContext * ctx, /**< [in,out] the context */
+  char* path /**< [in] path of the file that gets loaded into the memfd */
+);
+
+ocMemfdStatus
+ocmemfd_destroy_context(
+  ocMemfdContext ** ctx /**< [in,out] the context */
 );
 
 #endif
