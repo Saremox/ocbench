@@ -1,6 +1,8 @@
-#include "memfd-wrapper.h"
 #include "ocbenchConfig.h"
 
+#if defined(HAVE_LINUX_MEMFD_H) && !defined(WITHOUT_MEMFD)
+  #include "memfd-wrapper.h"
+#endif
 #include <sys/mman.h>
 #include <stdint.h>
 
