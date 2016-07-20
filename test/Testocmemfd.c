@@ -1,5 +1,6 @@
 #include "ocmemfd/ocmemfd.h"
 #include "ocunit.h"
+#include "ocbenchConfig.h"
 #include <fcntl.h>
 #include <sys/stat.h>
 
@@ -25,8 +26,10 @@ int TestMemoryMap()
 
 int TestGetSeals()
 {
+  #if defined(HAVE_LINUX_MEMFD_H) && !defined(WITHOUT_MEMFD)
   int ret = memfd_is_flag_set(fd->fd,F_SEAL_GROW);
 
+  #endif
   return EXIT_SUCCESS;
 }
 
