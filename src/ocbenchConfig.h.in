@@ -1,2 +1,61 @@
+#ifndef OCBENCHCONFIG_H
+#define OCBENCHCONFIG_H
+
 #define OCBENCH_VERSION_MAJOR @OCBENCH_VERSION_MAJOR@
 #define OCBENCH_VERSION_MINOR @OCBENCH_VERSION_MINOR@
+
+#cmakedefine HAVE_LINUX_MEMFD_H 1
+#cmakedefine HAVE_SYS_MMAN_H 1
+#cmakedefine HAVE_SYS_STAT_H 1
+#cmakedefine HAVE_FCNTL_H 1
+#cmakedefine HAVE_SYS_STAT_H 1
+#cmakedefine HAVE_SYS_PRCTL_H 1
+#cmakedefine HAVE_MQUEUE_H 1
+
+#cmakedefine HAVE_SHM_OPEN 1
+#cmakedefine HAVE_SHM_UNLINK 1
+#cmakedefine HAVE_MQ_OPEN 1
+#cmakedefine HAVE_MQ_UNLINK 1
+#cmakedefine HAVE_MMAP 1
+#cmakedefine HAVE_FCNTL 1
+#cmakedefine HAVE_PRCTL 1
+#cmakedefine HAVE_VDPRINTF 1
+#cmakedefine HAVE_GETPID 1
+
+#cmakedefine HAVE_MQD_T 1
+#cmakedefine HAVE_PID_T 1
+#cmakedefine HAVE_SIZE_T 1
+#cmakedefine HAVE_LONG 1
+#cmakedefine HAVE_LONG_INT 1
+
+#cmakedefine WITHOUT_SHM 1
+#cmakedefine WITHOUT_MEMFD 1
+
+#ifdef HAVE_MQD_T
+#define HAVE_MQD_T 1
+  #define MQD_T @MQD_T@
+#else
+  typedef int32_t mqd_t;
+  #define MQD_T sizeof(int32_t)
+#endif
+
+#ifdef HAVE_PID_T
+#define HAVE_PID_T 1
+  #define PID_T @MQD_T@
+#else
+  typedef int32_t pid_t;
+  #define PID_T sizeof(int32_t)
+#endif
+
+#ifdef HAVE_SIZE_T
+#define HAVE_SIZE_T 1
+  #define SIZE_T @MQD_T@
+#else
+  typedef int32_t size_t;
+  #define SIZE_T sizeof(int32_t)
+#endif
+
+#define LONG @LONG@
+#define LONG_INT @LONG_INT@
+
+#endif
