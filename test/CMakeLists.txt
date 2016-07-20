@@ -1,6 +1,8 @@
 cmake_policy(PUSH)
 
+IF(CMAKE_VERSION VERSION_GREATER "3.0")
 cmake_policy(SET CMP0037 OLD)
+ENDIF()
 
 add_executable(Testocmemfd Testocmemfd.c)
 add_executable(Testocunit Testocunit.c)
