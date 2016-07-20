@@ -21,7 +21,7 @@ int TestProcessCreation()
   oc_assert(ctx->pid>0, "pid of child should be greater than 0");
 
   waitpid(ctx->pid,&ret,0);
-  oc_assert_equal(EXIT_TEST_OK, WEXITSTATUS(ret));
+  oc_assert_equal_32bit(EXIT_TEST_OK, WEXITSTATUS(ret));
 
   return EXIT_SUCCESS;
 }
@@ -35,7 +35,7 @@ int TestCommMasterToChildChild(ocschedProcessContext* ctx, void* data) {
   }
   oc_assert(tries < 100, " child timeout on reading pipe");
   char buf[count+1];
-  read(ctx->comm.pipe_in,&buf,count);
+  oc_assert(read(ctx->comm.pipe_in,&buf,count) > 0,"failed to read");
   buf[count] = 0x00;
   oc_assert_str_equal(TESTSTRING,buf)
 
@@ -48,16 +48,18 @@ int TestCommMasterToChild()
   ocschedProcessContext * ctx =
     ocsched_fork_process((ocschedFunction) TestCommMasterToChildChild,"test",NULL);
 
-  write(ctx->comm.pipe_out,TESTSTRING,strlen(TESTSTRING));
+  oc_assert(write(ctx->comm.pipe_out,TESTSTRING,strlen(TESTSTRING)) > 0,
+    "failed to write");
 
   waitpid(ctx->pid,&ret,0);
-  oc_assert_equal(EXIT_TEST_OK, WEXITSTATUS(ret));
+  oc_assert_equal_32bit(EXIT_TEST_OK, WEXITSTATUS(ret));
 
   return EXIT_SUCCESS;
 }
 
 int TestCommChildToMasterChild(ocschedProcessContext* ctx, void* data) {
-  write(ctx->comm.pipe_out,TESTSTRING,strlen(TESTSTRING));
+  oc_assert(write(ctx->comm.pipe_out,TESTSTRING,strlen(TESTSTRING)),
+    "failed to write");
 
   exit(EXIT_TEST_OK);
 }
@@ -75,12 +77,12 @@ int TestCommChildToMaster()
   }
   oc_assert(tries < 100, " child timeout on reading pipe");
   char buf[count+1];
-  read(ctx->comm.pipe_in,&buf,count);
+  oc_assert(read(ctx->comm.pipe_in,&buf,count),"failed to read");
   buf[count] = 0x00;
   oc_assert_str_equal(TESTSTRING,buf)
 
   waitpid(ctx->pid,&ret,0);
-  oc_assert_equal(EXIT_TEST_OK, WEXITSTATUS(ret));
+  oc_assert_equal_32bit(EXIT_TEST_OK, WEXITSTATUS(ret));
 
   return EXIT_SUCCESS;
 }

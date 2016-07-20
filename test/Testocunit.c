@@ -7,9 +7,10 @@ int TestOcunitAssert()
   return EXIT_SUCCESS;
 }
 
-int TestOcunitAssertEqual()
+int TestOcunitAssertEqual32Bit()
 {
-  oc_assert_equal(1,1);
+  uint32_t i = 1;
+  oc_assert_equal_32bit(i,i);
 
   return EXIT_SUCCESS;
 }
@@ -24,7 +25,7 @@ int TestOcunitAssertStrEqual()
 int RunAllTests()
 {
   oc_run_test(TestOcunitAssert);
-  oc_run_test(TestOcunitAssertEqual);
+  oc_run_test(TestOcunitAssertEqual32Bit);
   oc_run_test(TestOcunitAssertStrEqual);
 
   return EXIT_SUCCESS;

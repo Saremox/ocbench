@@ -4,6 +4,7 @@
 #include "debug.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #define OCUNITFAILURE -1
 
@@ -12,8 +13,25 @@
 #define oc_assert(test, msg) if(!(test)) {\
   oc_unit_output(msg);\
   return OCUNITFAILURE;}
-#define oc_assert_equal(expected, got) if(expected != got) {\
-  oc_unit_output("expected: <0x%x> but got : <0x%x>",expected,got)\
+#define oc_assert_equal_8bit(expected, got) if(expected != got) {\
+  oc_unit_output("expected: <0x%hhx> but got : <0x%hhx>",\
+    (uint8_t) expected,(uint8_t) got)\
+  return OCUNITFAILURE;}
+#define oc_assert_equal_16bit(expected, got) if(expected != got) {\
+  oc_unit_output("expected: <0x%hx> but got : <0x%hx>",\
+    (uint16_t) expected,(uint16_t) got)\
+  return OCUNITFAILURE;}
+#define oc_assert_equal_32bit(expected, got) if(expected != got) {\
+  oc_unit_output("expected: <0x%x> but got : <0x%x>",\
+    (uint32_t) expected,(uint32_t) got)\
+  return OCUNITFAILURE;}
+#define oc_assert_equal_64bit(expected, got) if(expected != got) {\
+  oc_unit_output("expected: <0x%lx> but got : <0x%lx>",\
+    (uint64_t) expected,(uint64_t) got)\
+  return OCUNITFAILURE;}
+#define oc_assert_equal_128bit(expected, got) if(expected != got) {\
+  oc_unit_output("expected: <0x%llx> but got : <0x%llx>",\
+    (uint128_t) expected,(uint128_t) got)\
   return OCUNITFAILURE;}
 #define oc_assert_str_equal(expected, got) if(strcmp(expected,got) != 0) {\
   oc_unit_output("expected \"%s\" but got \"%s\"",expected,got );\
