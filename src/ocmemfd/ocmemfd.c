@@ -10,8 +10,18 @@
 ocMemfdContext * ocmemfd_create_context(char* path, size_t size)
 {
   ocMemfdContext * ctx = malloc(sizeof(ocMemfdContext));
-  ctx->fd = memfd_create(path,MFD_ALLOW_SEALING);
-  check(ctx->fd > 0, "failed to create memfd at %s with size of %s bytes",path,size)
+  #if defined(HAVE_LINUX_MEMFD_H) && !defined(WITHOUT_MEMFD)
+    ctx->fd = memfd_create(path,MFD_ALLOW_SEALING);
+    check(ctx->fd > 0, "failed to create memfd at %s with size of %s bytes",path,size)
+  #elif defined(HAVE_SHM_OPEN) && !defined(WITHOUT_SHM)
+    ctx->fd = shm_open(path,O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    check(ctx->fd > 0, "failed to create shm at %s with size of %s bytes",path,size)
+  #else
+    ctx->fd = fileno(tmpfile());
+    check(ctx->fd > 0, "failed to create tmpfile with size of %s bytes",size)
+  #endif
+  ctx->path = malloc(strlen(path));
+  strcpy(ctx->path,path);
   ctx->size = size;
   ctx->buf = NULL;
   ocmemfd_resize(ctx, size);
@@ -113,7 +123,12 @@ ocmemfd_destroy_context(ocMemfdContext ** ctx)
     check(munmap((*ctx)->buf,(*ctx)->size) == 0, "failed to memory unmap memfd");
     (*ctx)->buf = 0; // Reset pointer
   }
+  #if defined(HAVE_SHM_OPEN) && !defined(WITHOUT_SHM) && defined(WITHOUT_MEMFD)
+    shm_unlink((*ctx)->path);
+  #endif
   close((*ctx)->fd);
+  if((*ctx)->path >0)
+    free((*ctx)->path);
   free((*ctx));
   (*ctx) = 0;
   return OCMEMFD_SUCCESS;

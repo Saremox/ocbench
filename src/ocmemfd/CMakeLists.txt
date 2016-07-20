@@ -17,3 +17,11 @@ CHECK_TYPE_SIZE(long LONG)
 CHECK_TYPE_SIZE("long int" LONG_INT)
 
 add_library(ocmemfd ocmemfd.c)
+
+IF(HAVE_LINUX_MEMFD_H AND NOT WITHOUT_MEMFD)
+
+ELSEIF(HAVE_SHM_OPEN AND HAVE_SHM_UNLINK AND NOT WITHOUT_SHM)
+  target_link_libraries(ocmemfd rt)
+ELSE()
+
+ENDIF()
