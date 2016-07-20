@@ -24,7 +24,7 @@ ocMemfdContext * ocmemfd_create_context(char* path, size_t size)
     check(ctx->fd > 0,
       "failed to create tmpfile with size of %d bytes", (int32_t) size);
   #endif
-  ctx->path = malloc(strlen(path));
+  ctx->path = malloc(strlen(path) + 1);
   strcpy(ctx->path,path);
   ctx->size = size;
   ctx->buf = NULL;

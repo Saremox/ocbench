@@ -61,6 +61,9 @@ void childprocess(ocschedProcessContext* parent, void* data)
   ocsched_printf(parent,"compressed from %d bytes to %d bytes with lzma",
     (int32_t) decompressed->size, (int32_t) compressed_length);
 error:
+  ocmemfd_destroy_context(&compressed);
+  ocmemfd_destroy_context(&decompressed);
+
   return;
 }
 
@@ -73,8 +76,6 @@ int compressionTest(char * file)
   debug("forking child");
   ocschedProcessContext * child =
     ocsched_fork_process(childprocess,"child",fd);
-
-  ocMemfdContext * test = ocmemfd_create_context("/testctx",MAX_MEMFD_BUF);
   debug("loading file");
   ocmemfd_load_file(fd,file);
   debug("send filesize %d bytes to child",(int32_t) fd->size);
@@ -90,6 +91,7 @@ int compressionTest(char * file)
 
   printf("Recv from child: %s\n",buf);
 
+  ocmemfd_destroy_context(&fd);
   ocsched_destroy_context(&child);
   ocsched_destroy_global_mqueue();
 
