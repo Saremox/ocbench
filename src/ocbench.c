@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wait.h>
+#include "debug.h"
 #include "ocbenchConfig.h"
 #include "ocmemfd/ocmemfd.h"
 #include "ocsched/ocsched.h"
@@ -10,13 +11,43 @@
 
 void childprocess(ocschedProcessContext* parent, void* data)
 {
+  int read_tries = 0;
+  char recvbuf[1024];
+  size_t recvBytes = 0;
   size_t compressed_length = 0;
   SquashCodec* codec = squash_get_codec("lzma");
   ocMemfdContext * decompressed = (ocMemfdContext *) data;
+
+  check(codec > 0,"failed to get squash plugin lzma");
+
+  while (read_tries <= 100) {
+    size_t tmp = 0;
+    tmp = ocsched_recvfrom(parent,&recvbuf[recvBytes],1);
+    check(tmp >= 0,"failed to read from parent");
+    if(recvbuf[recvBytes] == '\n')
+    {
+      recvbuf[recvBytes] == 0x00;
+      break;
+    }
+    else
+      recvBytes += tmp;
+    usleep(100);
+    read_tries++;
+  }
+
+  int oldsize = decompressed->size;
+  int newsize = atoi(recvbuf);
+
+  debug("child got size of shm %d bytes",newsize);
+
+  decompressed->size = newsize;
+  ocmemfd_remap_buffer(decompressed,oldsize);
+
   ocMemfdContext * compressed =
     ocmemfd_create_context("/compressed",
       squash_codec_get_max_compressed_size(codec,decompressed->size));
   compressed_length = compressed->size;
+  debug("child compressing data");
   int ret = squash_codec_compress(codec,
                                   &compressed_length,
                                   compressed->buf,
@@ -25,8 +56,10 @@ void childprocess(ocschedProcessContext* parent, void* data)
                                   NULL);
   check(ret == SQUASH_OK,"failed to compress data [%d] : %s",
     ret,squash_status_to_string(ret));
+  debug("compression done. from %d to %d",
+    (int32_t) decompressed->size, (int32_t) compressed_length);
   ocsched_printf(parent,"compressed from %d bytes to %d bytes with lzma",
-    decompressed->size,compressed_length);
+    (int32_t) decompressed->size, (int32_t) compressed_length);
 error:
   return;
 }
@@ -36,12 +69,22 @@ int compressionTest(char * file)
   char buf[1024];
   int childreturn = 0;
   ocMemfdContext * fd = ocmemfd_create_context("/cache",MAX_MEMFD_BUF);
-  ocmemfd_load_file(fd,file);
 
+  debug("forking child");
   ocschedProcessContext * child =
     ocsched_fork_process(childprocess,"child",fd);
 
+  ocMemfdContext * test = ocmemfd_create_context("/testctx",MAX_MEMFD_BUF);
+  debug("loading file");
+  ocmemfd_load_file(fd,file);
+  debug("send filesize %d bytes to child",(int32_t) fd->size);
+  ocsched_printf(child,"%d\n",fd->size);
   waitpid(child->pid,&childreturn,0);
+  if(WIFSIGNALED(childreturn))
+  {
+    errno=WTERMSIG(childreturn);
+    log_err("child failed");
+  }
   int bytes_recv = ocsched_recvfrom(child,buf,1024);
   buf[bytes_recv] = 0x00;
 
