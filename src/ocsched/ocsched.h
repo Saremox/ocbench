@@ -11,7 +11,7 @@ typedef struct {
 } ocschedCommunicator;
 
 typedef struct {
-  int pid;
+  pid_t pid;
   char* name;
   mqd_t workQueue;
   ocschedCommunicator comm;

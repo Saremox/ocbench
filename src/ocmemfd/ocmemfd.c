@@ -13,13 +13,16 @@ ocMemfdContext * ocmemfd_create_context(char* path, size_t size)
   ocMemfdContext * ctx = malloc(sizeof(ocMemfdContext));
   #if defined(HAVE_LINUX_MEMFD_H) && !defined(WITHOUT_MEMFD)
     ctx->fd = memfd_create(path,MFD_ALLOW_SEALING);
-    check(ctx->fd > 0, "failed to create memfd at %s with size of %s bytes",path,size);
+    check(ctx->fd > 0,
+      "failed to create memfd at %s with size of %d bytes", path, (int32_t) size);
   #elif defined(HAVE_SHM_OPEN) && !defined(WITHOUT_SHM)
     ctx->fd = shm_open(path,O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    check(ctx->fd > 0, "failed to create shm at %s with size of %s bytes",path,size);
+    check(ctx->fd > 0,
+      "failed to create shm at %s with size of %d bytes", path, (int32_t) size);
   #else
     ctx->fd = fileno(tmpfile());
-    check(ctx->fd > 0, "failed to create tmpfile with size of %s bytes",size);
+    check(ctx->fd > 0,
+      "failed to create tmpfile with size of %d bytes", (int32_t) size);
   #endif
   ctx->path = malloc(strlen(path));
   strcpy(ctx->path,path);
@@ -37,7 +40,7 @@ ocMemfdStatus ocmemfd_map_buffer(ocMemfdContext * ctx)
   check(ctx->fd > 0 || ctx->size <= 0, "not a valid context")
   if(ctx->buf > 0)
   {
-    log_warn("The given context 0x%x is allready memory maped",ctx);
+    log_warn("The given context 0x%lx is allready memory maped",(int64_t) ctx);
     return OCMEMFD_ALLREDY_MMAPED;
   }
   ctx->buf = mmap(NULL, ctx->size, PROT_READ | PROT_WRITE,
@@ -95,7 +98,7 @@ ocmemfd_load_file(ocMemfdContext * ctx, char* path)
     return OCMEMFD_CANNOT_GET_FILE_SIZE;
 
   check(ocmemfd_resize(ctx,filesize) == OCMEMFD_SUCCESS,
-    "cannot resize memfd to %d bytes",filesize);
+    "cannot resize memfd to %d bytes",(int32_t) filesize);
 
   if((file = open(path,0, "r+b")))
   {
@@ -107,7 +110,7 @@ ocmemfd_load_file(ocMemfdContext * ctx, char* path)
       check(ret >= 0,"cannot read from file. %d bytes have been read",readBytes);
     }
     check(readBytes == filesize,
-      "only read %d from %d bytes",readBytes,filesize);
+      "only read %d from %d bytes",readBytes, (int32_t) filesize);
   }
   else
     return OCMEMFD_CANNOT_READ;
