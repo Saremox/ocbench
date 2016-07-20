@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -12,13 +13,13 @@ ocMemfdContext * ocmemfd_create_context(char* path, size_t size)
   ocMemfdContext * ctx = malloc(sizeof(ocMemfdContext));
   #if defined(HAVE_LINUX_MEMFD_H) && !defined(WITHOUT_MEMFD)
     ctx->fd = memfd_create(path,MFD_ALLOW_SEALING);
-    check(ctx->fd > 0, "failed to create memfd at %s with size of %s bytes",path,size)
+    check(ctx->fd > 0, "failed to create memfd at %s with size of %s bytes",path,size);
   #elif defined(HAVE_SHM_OPEN) && !defined(WITHOUT_SHM)
     ctx->fd = shm_open(path,O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    check(ctx->fd > 0, "failed to create shm at %s with size of %s bytes",path,size)
+    check(ctx->fd > 0, "failed to create shm at %s with size of %s bytes",path,size);
   #else
     ctx->fd = fileno(tmpfile());
-    check(ctx->fd > 0, "failed to create tmpfile with size of %s bytes",size)
+    check(ctx->fd > 0, "failed to create tmpfile with size of %s bytes",size);
   #endif
   ctx->path = malloc(strlen(path));
   strcpy(ctx->path,path);
@@ -65,12 +66,14 @@ ocMemfdStatus ocmemfd_resize(ocMemfdContext * ctx, size_t newsize)
   check(ctx->fd > 0 || ctx->size <= 0, "not a valid context");
   check(newsize > 0, "newsize must be greater than 0");
   size_t oldsize = ctx->size;
+  #if defined(HAVE_LINUX_MEMFD_H) && !defined(WITHOUT_MEMFD)
   if(newsize > ctx->size)
     if ( ! memfd_is_growable(ctx->fd))
       return OCMEMFD_NOT_GROWABLE;
   else
     if( ! memfd_is_shrinkable(ctx->fd))
       return OCMEMFD_NOT_SHRINKABLE;
+  #endif
   check(ftruncate(ctx->fd,newsize) == 0, "cannot set new size");
   ctx->size = newsize;
   check(ocmemfd_remap_buffer(ctx,oldsize) == OCMEMFD_SUCCESS, "resizing memory map failed");
