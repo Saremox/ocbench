@@ -23,8 +23,13 @@ ocsched_get_msgq()
     return global_job_queue;
 
   sprintf(msgQname,"/ocbench-work-queue-%d",getpid());
+  #if defined(O_CLOEXEC)
+    #define MQ_FLAGS_USED O_CREAT | O_RDWR | O_CLOEXEC
+  #else
+    #define MQ_FLAGS_USED O_CREAT | O_RDWR
+  #endif
   check(global_job_queue = mq_open(msgQname,
-    O_CREAT | O_RDWR | O_CLOEXEC,
+    MQ_FLAGS_USED,
     S_IRUSR | S_IWUSR, NULL),"Couldn't create work queue");
 
   return global_job_queue;
@@ -43,8 +48,8 @@ ocsched_fork_process(ocschedFunction work_function, char* childname, void* data)
   int master[2];
   int child[2];
 
-  pipe(master);
-  pipe(child);
+  check(pipe(master) == 0,"failed to create pipe");
+  check(pipe(child)  == 0,"failed to create pipe");
 
   if((ctx->pid = fork()) > 0)
   {
