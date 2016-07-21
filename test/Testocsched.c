@@ -16,7 +16,8 @@ int TestProcessCreation()
 {
   int ret;
   ocschedProcessContext * ctx =
-    ocsched_fork_process((ocschedFunction) TestProcessCreationChild,"test",NULL);
+    ocsched_fork_process((ocschedFunction) TestProcessCreationChild,
+      "test",NULL);
 
   oc_assert(ctx->pid>0, "pid of child should be greater than 0");
 
@@ -46,7 +47,8 @@ int TestCommMasterToChild()
 {
   int ret;
   ocschedProcessContext * ctx =
-    ocsched_fork_process((ocschedFunction) TestCommMasterToChildChild,"test",NULL);
+    ocsched_fork_process((ocschedFunction) TestCommMasterToChildChild,
+      "test",NULL);
 
   oc_assert(write(ctx->comm.pipe_out,TESTSTRING,strlen(TESTSTRING)) > 0,
     "failed to write");
@@ -68,7 +70,8 @@ int TestCommChildToMaster()
 {
   int ret, count = 0, tries = 0;
   ocschedProcessContext * ctx =
-    ocsched_fork_process((ocschedFunction) TestCommChildToMasterChild,"test",NULL);
+    ocsched_fork_process((ocschedFunction) TestCommChildToMasterChild,
+      "test",NULL);
 
   while (count < strlen(TESTSTRING) - 1 && tries <= 100) {
     ioctl(ctx->comm.pipe_in, FIONREAD, &count);

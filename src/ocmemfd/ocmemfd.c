@@ -58,7 +58,8 @@ ocMemfdStatus ocmemfd_remap_buffer(ocMemfdContext * ctx, size_t oldsize)
     check(munmap(ctx->buf,oldsize) == 0, "failed to memory unmap memfd");
     ctx->buf = 0; // Reset pointer
   }
-  check(ocmemfd_map_buffer(ctx) == OCMEMFD_SUCCESS, "failed to memory map memfd");
+  check(ocmemfd_map_buffer(ctx) == OCMEMFD_SUCCESS,
+    "failed to memory map memfd");
   return OCMEMFD_SUCCESS;
 error:
   return OCMEMFD_REMMAP_FAILURE;
@@ -79,7 +80,8 @@ ocMemfdStatus ocmemfd_resize(ocMemfdContext * ctx, size_t newsize)
   #endif
   check(ftruncate(ctx->fd,newsize) == 0, "cannot set new size");
   ctx->size = newsize;
-  check(ocmemfd_remap_buffer(ctx,oldsize) == OCMEMFD_SUCCESS, "resizing memory map failed");
+  check(ocmemfd_remap_buffer(ctx,oldsize) == OCMEMFD_SUCCESS,
+    "resizing memory map failed");
   return OCMEMFD_SUCCESS;
 error:
   return OCMEMFD_RESIZE_FAILURE;

@@ -38,7 +38,8 @@ int TestResizingMemfdGrow()
 {
   int newsize = 1024;
 
-  oc_assert(ocmemfd_resize(fd,newsize) == OCMEMFD_SUCCESS,"resizing was not successful");
+  oc_assert(ocmemfd_resize(fd,newsize) == OCMEMFD_SUCCESS,
+    "resizing was not successful");
   oc_assert_equal_32bit(newsize, fd->size);
   // Test if we can set every byte in memfd
   memset(fd->buf,0x00,fd->size);
@@ -50,7 +51,8 @@ int TestResizingMemfdGrowBig()
 {
   int newsize = 16 * 1024 * 1024;
 
-  oc_assert(ocmemfd_resize(fd,newsize) == OCMEMFD_SUCCESS,"resizing was not successful");
+  oc_assert(ocmemfd_resize(fd,newsize) == OCMEMFD_SUCCESS,
+    "resizing was not successful");
   oc_assert_equal_32bit(newsize, fd->size);
   // Test if we can set every byte in memfd
   memset(fd->buf,0x00,fd->size);
@@ -62,7 +64,8 @@ int TestResizingMemfdShrink()
 {
   int newsize = SIZEOFMEMFD;
 
-  oc_assert(ocmemfd_resize(fd,newsize) == OCMEMFD_SUCCESS,"resizing was not successful");
+  oc_assert(ocmemfd_resize(fd,newsize) == OCMEMFD_SUCCESS,
+    "resizing was not successful");
   oc_assert_equal_32bit(newsize, fd->size);
   // Test if we can set every byte in memfd
   memset(fd->buf,0x00,fd->size);
@@ -74,7 +77,8 @@ int TestResizingMemfdShrinkTiny()
 {
   int newsize = 16;
 
-  oc_assert(ocmemfd_resize(fd,newsize) == OCMEMFD_SUCCESS,"resizing was not successful");
+  oc_assert(ocmemfd_resize(fd,newsize) == OCMEMFD_SUCCESS,
+    "resizing was not successful");
   oc_assert_equal_32bit(newsize, fd->size);
   // Test if we can set every byte in memfd
   memset(fd->buf,0x00,fd->size);
@@ -106,7 +110,8 @@ int TestLoadFileIntoMemfd()
   else
     log_err("cannot stat %s for testing",path);
 
-  oc_assert(ocmemfd_load_file(fd,path) == OCMEMFD_SUCCESS, "failed to load file");
+  oc_assert(ocmemfd_load_file(fd,path) == OCMEMFD_SUCCESS,
+    "failed to load file");
   file = open(path,0,'r');
   memorymap = mmap(NULL, filesize, PROT_READ,MAP_PRIVATE, file,0);
 

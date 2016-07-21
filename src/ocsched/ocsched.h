@@ -59,13 +59,11 @@ ocsched_recvfrom(
 
 ocschedStatus
 ocsched_schedule_job(
-  ocschedProcessContext * ctx, /**< [in] context which will be recv from */
   ocschedJob * job /**< [in] job which get scheduled */
 );
 
 ocschedStatus
 ocsched_get_job(
-  ocschedProcessContext * ctx, /**< [in] context which will be recv from */
   ocschedJob * job /**< [out] pointer in which we store the job */
 );
 
