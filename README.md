@@ -12,12 +12,47 @@ openCompressBench uses https://github.com/quixdb/squash as a backend.
 to meet this dependency you have to compile squash for yourself or install
 it through a package system if it's available on your system.
 
-After you met the dependencies you just need to call `cmake` in the cloned
-directory or at any location you want with the -B switch of cmake see
-`man cmake`.
-Than you finished creating the cmake build environment you only need to invoke
-`make`. To test your build type `make test`. If doesn't complain about failed
-test you can now test the application or install it with `make install`
+### Installing squash in home directory
+
+Compiling squash is pretty straight forward I've tested ocbench with squash
+commit
+https://github.com/quixdb/squash/commit/67a2fd852d92ec7536eef52f0e235c7e66dd7878
+
+```
+git clone https://github.com/quixdb/squash.git
+cd squash
+git checkout 67a2fd852d92ec7536eef52f0e235c7e66dd7878
+./autogen.sh --prefix=${HOME}/local
+make -j$(nproc)
+make install
+```
+
+As of this writing squash is installing his include files not correctly. In
+order to get it working you have to symlink the main `squash.h`
+```
+ln ~/local/include/squash-0.8/squash.h ~/local/include/squash-0.8/squash/squash.h
+```
+
+### Compiling ocbench
+
+If you followed the installation steps from above your need to export some
+environment variables to get cmake finding your local squash installation.
+```
+export PATH="$HOME/local/bin:$PATH"
+export LD_LIBRARY_PATH="$HOME/local/lib"
+export CMAKE_MODULE_PATH="$HOME/local/lib/cmake"
+```
+
+You've now met all prerequisites to `git clone` and make ocbench. Building
+ocbench is as simple as:
+```
+git checkout 14381903aa04fce420c759e518632310ba16f6cd
+cmake -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+make test
+```
+
+If all tests passes you're ready use the application.
 
 **Note:** in the current state of development
 `ocbench` only is capable of compressing one file and showing compressed size of
