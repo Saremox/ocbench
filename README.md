@@ -14,9 +14,10 @@ it through a package system if it's available on your system.
 
 ### Installing squash in home directory
 
-Compiling squash is pretty straight forward I've tested ocbench with squash
-commit
+Compiling squash is pretty straight forward. So far I've tested ocbench with
+squash commit
 https://github.com/quixdb/squash/commit/67a2fd852d92ec7536eef52f0e235c7e66dd7878
+but this instructions should also apply to later commits.
 
 ```
 git clone https://github.com/quixdb/squash.git
@@ -35,8 +36,8 @@ ln ~/local/include/squash-0.8/squash.h ~/local/include/squash-0.8/squash/squash.
 
 ### Compiling ocbench
 
-If you followed the installation steps from above your need to export some
-environment variables to get cmake finding your local squash installation.
+If you followed the installation steps from above, you need to export some
+environment variables, so cmake can find your local squash installation.
 ```
 export PATH="$HOME/local/bin:$PATH"
 export LD_LIBRARY_PATH="$HOME/local/lib"
@@ -52,7 +53,7 @@ make -j$(nproc)
 make test
 ```
 
-If all tests passes you're ready use the application.
+If all tests passes you're ready to use the application.
 
 **Note:** in the current state of development
 `ocbench` only is capable of compressing one file and showing compressed size of
