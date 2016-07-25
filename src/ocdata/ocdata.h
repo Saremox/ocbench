@@ -1,4 +1,5 @@
 #include <sqlite3.h>
+#include <stdint.h>
 
 #ifndef OCDATA_H
 #define OCDATA_H
