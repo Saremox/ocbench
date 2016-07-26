@@ -5,6 +5,13 @@
 #include "ocdata.h"
 #include "debug.h"
 
+#define RESET_STATEMENT(db, stmt, ret) ret = sqlite3_reset(stmt); \
+check(ret == SQLITE_OK,"cannot reset prepared statement: %s", \
+  sqlite3_errmsg(db)); \
+ret = sqlite3_clear_bindings(stmt); \
+check(ret == SQLITE_OK,"cannot clear bindings of prepared statement: %s", \
+  sqlite3_errmsg(db));
+
 /* Internal functions */
 
 ocdataStatus
@@ -128,6 +135,48 @@ error:
   return OCDATA_FAILURE;
 }
 
+ocdataStatus
+ocdata_get_id(ocdataContext* ctx, char* table,
+  char* field, char* value, int64_t* id_ptr)
+{
+  int           foundids  = 0;
+  int           ret       = SQLITE_OK;
+  sqlite3_stmt* querry    = NULL;
+  char*         fmtquerry = "SELECT rowid FROM %s WHERE %s = \"%s\";";
+  int           maxlen    = strlen(fmtquerry) +
+                            strlen(table) +
+                            strlen(field) +
+                            strlen(value);
+
+  char* sql = calloc(maxlen,1);
+  check(sql > 0, "cannot allocate string buffer");
+  sprintf(sql,fmtquerry,table,field,value);
+
+  ret = sqlite3_prepare_v2(ctx->db, sql , -1 , &querry, NULL);
+  check(ret == SQLITE_OK, "failed to prepare statement: %s",
+    sqlite3_errmsg(ctx->db));
+  ret = sqlite3_step(querry);
+  while (ret != SQLITE_DONE && ret != SQLITE_OK) {
+    foundids++;
+    int cols = sqlite3_column_count(querry);
+    if(cols ==1)
+      (*id_ptr) = sqlite3_column_int(querry, 0);
+    ret = sqlite3_step(querry);
+  }
+
+  sqlite3_finalize(querry);
+  free(sql);
+
+  if (foundids > 1)
+    return OCDATA_MORE_THAN_ONE;
+  else if(foundids == 1)
+    return OCDATA_SUCCESS;
+  else
+    return OCDATA_NOT_FOUND;
+error:
+  return OCDATA_FAILURE;
+}
+
 /* interface functions */
 
 ocdataStatus
@@ -160,18 +209,21 @@ ocdata_add_file(ocdataContext* ctx, ocdataFile* file)
   check(file->path > 0 && strlen(file->path) > 0,
     "not a valid file path: %s",file->path);
   check(file->size > 0, "0 bytes invalid file size.");
-  sqlite3_bind_text(ctx->file_add, 1, file->path,strlen(file->path), SQLITE_STATIC);
+
+  // check if entry allready exists
+  ocdataStatus st = ocdata_get_id(ctx, "file", "path",
+    file->path, &file->file_id);
+  if(st == OCDATA_SUCCESS)
+    return OCDATA_SUCCESS;
+
+  sqlite3_bind_text(ctx->file_add, 1, file->path,
+      strlen(file->path), SQLITE_STATIC);
   sqlite3_bind_int(ctx->file_add, 2, file->size);
   ret = sqlite3_step(ctx->file_add);
   check(ret == SQLITE_DONE,"cannot execute prepared statement: %s",
     sqlite3_errmsg(ctx->db));
   file->file_id = sqlite3_last_insert_rowid(ctx->db);
-  ret = sqlite3_reset(ctx->file_add);
-  check(ret == SQLITE_OK,"cannot reset prepared statement: %s",
-    sqlite3_errmsg(ctx->db));
-  ret = sqlite3_clear_bindings(ctx->file_add);
-  check(ret == SQLITE_OK,"cannot clear bindings of prepared statement: %s",
-    sqlite3_errmsg(ctx->db));
+  RESET_STATEMENT(ctx->db, ctx->file_add, ret);
 
   return OCDATA_SUCCESS;
 error:
@@ -184,17 +236,46 @@ ocdata_add_plugin(ocdataContext* ctx, ocdataPlugin* plugin)
   int ret = SQLITE_OK;
   check(plugin->name > 0 && strlen(plugin->name) > 0,
     "not a valid plugin name: %s",plugin->name);
-  sqlite3_bind_text(ctx->plugin_add, 1, plugin->name,strlen(plugin->name), SQLITE_STATIC);
+
+  // check if entry allready exists
+  ocdataStatus st = ocdata_get_id(ctx, "plugin", "name",
+    plugin->name, &plugin->plugin_id);
+  if(st == OCDATA_SUCCESS)
+    return OCDATA_SUCCESS;
+
+  sqlite3_bind_text(ctx->plugin_add, 1, plugin->name,
+      strlen(plugin->name), SQLITE_STATIC);
   ret = sqlite3_step(ctx->plugin_add);
   check(ret == SQLITE_DONE,"cannot execute prepared statement: %s",
     sqlite3_errmsg(ctx->db));
   plugin->plugin_id = sqlite3_last_insert_rowid(ctx->db);
-  ret = sqlite3_reset(ctx->plugin_add);
-  check(ret == SQLITE_OK,"cannot reset prepared statement: %s",
+  RESET_STATEMENT(ctx->db, ctx->plugin_add, ret);
+
+  return OCDATA_SUCCESS;
+error:
+  return OCDATA_FAILURE;
+}
+
+ocdataStatus
+ocdata_add_option(ocdataContext* ctx, ocdataOption* option)
+{
+  int ret = SQLITE_OK;
+  check(option->name > 0 && strlen(option->name) > 0,
+    "not a valid option name: %s",option->name);
+
+  // check if entry allready exists
+  ocdataStatus st = ocdata_get_id(ctx, "option", "name",
+    option->name, &option->option_id);
+  if(st == OCDATA_SUCCESS)
+    return OCDATA_SUCCESS;
+
+  sqlite3_bind_text(ctx->option_add, 1, option->name,
+      strlen(option->name), SQLITE_STATIC);
+  ret = sqlite3_step(ctx->option_add);
+  check(ret == SQLITE_DONE,"cannot execute prepared statement: %s",
     sqlite3_errmsg(ctx->db));
-  ret = sqlite3_clear_bindings(ctx->plugin_add);
-  check(ret == SQLITE_OK,"cannot clear bindings of prepared statement: %s",
-    sqlite3_errmsg(ctx->db));
+  option->option_id = sqlite3_last_insert_rowid(ctx->db);
+  RESET_STATEMENT(ctx->db, ctx->option_add, ret);
 
   return OCDATA_SUCCESS;
 error:
@@ -216,7 +297,31 @@ ocdata_add_comp_options(ocdataContext* ctx, ocdataCompressionOption** options)
 ocdataStatus
 ocdata_add_codec(ocdataContext* ctx, ocdataCodec* codec)
 {
+  int ret = SQLITE_OK;
+  check(codec->name > 0, "invalid codec name");
+  check(codec->plugin_id > 0, "invalid plugin pointer");
 
+  // check if entry allready exists
+  ocdataStatus st = ocdata_get_id(ctx, "codec", "name",
+    codec->name, &codec->codec_id);
+  if(st == OCDATA_SUCCESS)
+    return OCDATA_SUCCESS;
+
+  // get plugin id or instert it into db
+  ret = ocdata_add_plugin(ctx,codec->plugin_id);
+  check(ret = OCDATA_SUCCESS, "failed to get plugin id or insert plugin");
+  check(codec->plugin_id->plugin_id > 0, "invalid plugin id.");
+  sqlite3_bind_int(ctx->codec_add, 1, codec->plugin_id->plugin_id);
+  sqlite3_bind_text(ctx->codec_add, 2, codec->name,
+    strlen(codec->name), SQLITE_STATIC);
+  ret = sqlite3_step(ctx->codec_add);
+  codec->codec_id = sqlite3_last_insert_rowid(ctx->db);
+
+  RESET_STATEMENT(ctx->db, ctx->codec_add, ret);
+
+  return OCDATA_SUCCESS;
+error:
+  return OCDATA_FAILURE;
 }
 
 ocdataStatus
