@@ -6,6 +6,13 @@
 
 typedef struct {
   sqlite3 *db;
+  sqlite3_stmt* file_add;
+  sqlite3_stmt* plugin_add;
+  sqlite3_stmt* codec_add;
+  sqlite3_stmt* option_add;
+  sqlite3_stmt* compression_add;
+  sqlite3_stmt* compression_option_add;
+  sqlite3_stmt* result_add;
 } ocdataContext;
 
 typedef struct {
@@ -15,6 +22,7 @@ typedef struct {
 } ocdataFile;
 
 typedef struct {
+  int64_t comp_id;
   int64_t option_id;
   char*   name;
   char*   value;

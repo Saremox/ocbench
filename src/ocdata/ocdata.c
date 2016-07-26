@@ -15,7 +15,7 @@ ocdata_create_tables(ocdataContext* ctx)
   char* file_structure =
     "CREATE TABLE IF NOT EXISTS file ("
     "   file_id INTEGER NOT NULL PRIMARY KEY,"
-    "   path    VARCHAR NOT NULL,"
+    "   path    VARCHAR NOT NULL UNIQUE,"
     "   size    INTEGER NOT NULL );";
   ret = sqlite3_exec(ctx->db, file_structure, 0 ,0, &err_msg);
   check(ret == SQLITE_OK, "failed to create table for file: %s", err_msg);
@@ -23,7 +23,7 @@ ocdata_create_tables(ocdataContext* ctx)
   char* plugin_structure =
     "CREATE TABLE IF NOT EXISTS plugin ("
     "   plugin_id INTEGER NOT NULL PRIMARY KEY,"
-    "   name      VARCHAR NOT NULL );";
+    "   name      VARCHAR NOT NULL UNIQUE );";
   ret = sqlite3_exec(ctx->db, plugin_structure, 0 ,0, &err_msg);
   check(ret == SQLITE_OK, "failed to create table for plugin: %s", err_msg);
 
@@ -31,7 +31,7 @@ ocdata_create_tables(ocdataContext* ctx)
     "CREATE TABLE IF NOT EXISTS codec ("
     "   codec_id  INTEGER NOT NULL PRIMARY KEY,"
     "   plugin_id INTEGER NOT NULL,"
-    "   name      VARCHAR NOT NULL,"
+    "   name      VARCHAR NOT NULL UNIQUE,"
     "   FOREIGN KEY(plugin_id) REFERENCES plugin(plugin_id));";
   ret = sqlite3_exec(ctx->db, codec_structure, 0 ,0, &err_msg);
   check(ret == SQLITE_OK, "failed to create table for codec: %s", err_msg);
@@ -39,7 +39,7 @@ ocdata_create_tables(ocdataContext* ctx)
   char* option_structure =
     "CREATE TABLE IF NOT EXISTS option ("
     "   option_id INTEGER NOT NULL PRIMARY KEY,"
-    "   name      VARCHAR NOT NULL );";
+    "   name      VARCHAR NOT NULL UNIQUE);";
   ret = sqlite3_exec(ctx->db, option_structure, 0 ,0, &err_msg);
   check(ret == SQLITE_OK, "failed to create table for option: %s", err_msg);
 
@@ -81,6 +81,53 @@ error:
   return OCDATA_FAILURE;
 }
 
+ocdataStatus
+ocdata_prepare_statements(ocdataContext* ctx)
+{
+  int ret = SQLITE_OK;
+  char* sql;
+  sql = "INSERT INTO file(path,size) VALUES (? , ?)";
+  ret = sqlite3_prepare_v2(ctx->db, sql, -1, &ctx->file_add, 0);
+  check(ret == SQLITE_OK, "failed to prepare statement: %s",
+    sqlite3_errmsg(ctx->db));
+
+  sql = "INSERT INTO plugin(name) VALUES (?)";
+  ret = sqlite3_prepare_v2(ctx->db, sql, -1, &ctx->plugin_add, 0);
+  check(ret == SQLITE_OK, "failed to prepare statement: %s",
+    sqlite3_errmsg(ctx->db));
+
+  sql = "INSERT INTO codec(plugin_id, name) VALUES ( ? , ? )";
+  ret = sqlite3_prepare_v2(ctx->db, sql, -1, &ctx->codec_add, 0);
+  check(ret == SQLITE_OK, "failed to prepare statement: %s",
+    sqlite3_errmsg(ctx->db));
+
+  sql = "INSERT INTO compression(codec_id) VALUES (?)";
+  ret = sqlite3_prepare_v2(ctx->db, sql, -1, &ctx->compression_add, 0);
+  check(ret == SQLITE_OK, "failed to prepare statement: %s",
+    sqlite3_errmsg(ctx->db));
+
+  sql = "INSERT INTO option(name) VALUES (?)";
+  ret = sqlite3_prepare_v2(ctx->db, sql, -1, &ctx->option_add, 0);
+  check(ret == SQLITE_OK, "failed to prepare statement: %s",
+    sqlite3_errmsg(ctx->db));
+
+  sql = "INSERT INTO compression_option(comp_id, option_id, value) "
+        "   VALUES ( ? , ? , ?);";
+  ret = sqlite3_prepare_v2(ctx->db, sql, -1, &ctx->compression_option_add, 0);
+  check(ret == SQLITE_OK, "failed to prepare statement: %s",
+    sqlite3_errmsg(ctx->db));
+
+  sql = "INSERT INTO result(comp_id, file_id, compressed_size, time)"
+        "   VALUES ( ? , ? , ? , ? );";
+  ret = sqlite3_prepare_v2(ctx->db, sql, -1, &ctx->result_add, 0);
+  check(ret == SQLITE_OK, "failed to prepare statement: %s",
+    sqlite3_errmsg(ctx->db));
+
+  return OCDATA_SUCCESS;
+error:
+  return OCDATA_FAILURE;
+}
+
 /* interface functions */
 
 ocdataStatus
@@ -88,20 +135,6 @@ ocdata_create_context(ocdataContext** ctx, char* dbfilepath, int64_t flags)
 {
   (*ctx) = malloc(sizeof(ocdataContext));
   check((*ctx) > 0, "allocation of ocdataContext failed");
-
-  // if(flags & OCDATA_BACKUP)
-  // {
-  //   struct stat file_info;
-  //   if(stat(dbfilepath,&file_info) == 0)
-  //   {
-  //     // db File exists
-  //     char* bakfile = malloc(strlen(dbfilepath)+5);
-  //     sprintf(bakfile,"%s.bak",dbfilepath);
-  //     int original  = open(dbfilepath,0,"r+b");
-  //     int backup    = open(bakfile,0,"w+b");
-  //   }
-  // }
-
   int ret = sqlite3_open(dbfilepath,&(*ctx)->db);
   check(ret == SQLITE_OK, "failed to open sqlite database: %s",
     sqlite3_errmsg((*ctx)->db))
@@ -109,6 +142,8 @@ ocdata_create_context(ocdataContext** ctx, char* dbfilepath, int64_t flags)
   // Create table structures if they don't exist
   ret = ocdata_create_tables((*ctx));
   check(ret == OCDATA_SUCCESS, "failed to create table structures");
+
+  ocdata_prepare_statements((*ctx));
 
   return OCDATA_SUCCESS;
 error:
@@ -121,17 +156,53 @@ error:
 ocdataStatus
 ocdata_add_file(ocdataContext* ctx, ocdataFile* file)
 {
+  int ret = SQLITE_OK;
+  check(file->path > 0 && strlen(file->path) > 0,
+    "not a valid file path: %s",file->path);
+  check(file->size > 0, "0 bytes invalid file size.");
+  sqlite3_bind_text(ctx->file_add, 1, file->path,strlen(file->path), SQLITE_STATIC);
+  sqlite3_bind_int(ctx->file_add, 2, file->size);
+  ret = sqlite3_step(ctx->file_add);
+  check(ret == SQLITE_DONE,"cannot execute prepared statement: %s",
+    sqlite3_errmsg(ctx->db));
+  file->file_id = sqlite3_last_insert_rowid(ctx->db);
+  ret = sqlite3_reset(ctx->file_add);
+  check(ret == SQLITE_OK,"cannot reset prepared statement: %s",
+    sqlite3_errmsg(ctx->db));
+  ret = sqlite3_clear_bindings(ctx->file_add);
+  check(ret == SQLITE_OK,"cannot clear bindings of prepared statement: %s",
+    sqlite3_errmsg(ctx->db));
 
+  return OCDATA_SUCCESS;
+error:
+  return OCDATA_FAILURE;
 }
 
 ocdataStatus
-ocdata_add_plugin(ocdataContext* ctx, ocdataPlugin* file)
+ocdata_add_plugin(ocdataContext* ctx, ocdataPlugin* plugin)
 {
+  int ret = SQLITE_OK;
+  check(plugin->name > 0 && strlen(plugin->name) > 0,
+    "not a valid plugin name: %s",plugin->name);
+  sqlite3_bind_text(ctx->plugin_add, 1, plugin->name,strlen(plugin->name), SQLITE_STATIC);
+  ret = sqlite3_step(ctx->plugin_add);
+  check(ret == SQLITE_DONE,"cannot execute prepared statement: %s",
+    sqlite3_errmsg(ctx->db));
+  plugin->plugin_id = sqlite3_last_insert_rowid(ctx->db);
+  ret = sqlite3_reset(ctx->plugin_add);
+  check(ret == SQLITE_OK,"cannot reset prepared statement: %s",
+    sqlite3_errmsg(ctx->db));
+  ret = sqlite3_clear_bindings(ctx->plugin_add);
+  check(ret == SQLITE_OK,"cannot clear bindings of prepared statement: %s",
+    sqlite3_errmsg(ctx->db));
 
+  return OCDATA_SUCCESS;
+error:
+  return OCDATA_FAILURE;
 }
 
 ocdataStatus
-ocdata_add_comp_option(ocdataContext* ctx, ocdataCompressionOption* file)
+ocdata_add_comp_option(ocdataContext* ctx, ocdataCompressionOption* compOption)
 {
 
 }
@@ -143,19 +214,19 @@ ocdata_add_comp_options(ocdataContext* ctx, ocdataCompressionOption** options)
 }
 
 ocdataStatus
-ocdata_add_codec(ocdataContext* ctx, ocdataCodec* file)
+ocdata_add_codec(ocdataContext* ctx, ocdataCodec* codec)
 {
 
 }
 
 ocdataStatus
-ocdata_add_comp(ocdataContext* ctx, ocdataCompresion* file)
+ocdata_add_comp(ocdataContext* ctx, ocdataCompresion* compression)
 {
 
 }
 
 ocdataStatus
-ocdata_add_result(ocdataContext* ctx, ocdataResult* file)
+ocdata_add_result(ocdataContext* ctx, ocdataResult* result)
 {
 
 }
@@ -208,5 +279,15 @@ ocdata_get_result(ocdataContext* ctx, ocdataResult** res,
 ocdataStatus
 ocdata_destroy_context(ocdataContext **ctx)
 {
+  sqlite3_finalize((*ctx)->file_add);
+  sqlite3_finalize((*ctx)->plugin_add);
+  sqlite3_finalize((*ctx)->codec_add);
+  sqlite3_finalize((*ctx)->option_add);
+  sqlite3_finalize((*ctx)->compression_add);
+  sqlite3_finalize((*ctx)->compression_option_add);
+  sqlite3_finalize((*ctx)->result_add);
+
+  sqlite3_close((*ctx)->db);
+  free((*ctx));
 
 }
