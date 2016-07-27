@@ -63,7 +63,7 @@ struct __ocdataCodec {
 
 struct __ocdataCompresion {
   int64_t                   comp_id;
-  ocdataCodec*              codec;
+  ocdataCodec*              codec_id;
   ocdataCompressionOption** options;
 };
 
