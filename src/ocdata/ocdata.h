@@ -1,5 +1,6 @@
 #include <sqlite3.h>
 #include <stdint.h>
+#include "ocutils/list.h"
 
 #ifndef OCDATA_H
 #define OCDATA_H
@@ -62,9 +63,9 @@ struct __ocdataCodec {
 };
 
 struct __ocdataCompresion {
-  int64_t                   comp_id;
-  ocdataCodec*              codec_id;
-  ocdataCompressionOption** options;
+  int64_t       comp_id;
+  ocdataCodec*  codec_id;
+  List*         options;
 };
 
 struct __ocdataResult{
@@ -120,7 +121,7 @@ ocdata_add_comp_option(
 ocdataStatus
 ocdata_add_comp_options(
   ocdataContext* ctx,
-  ocdataCompressionOption** options
+  List* options
 );
 
 ocdataStatus

@@ -83,6 +83,18 @@ ocdata_create_tables(ocdataContext* ctx)
   ret = sqlite3_exec(ctx->db, result_structure, 0 ,0, &err_msg);
   check(ret == SQLITE_OK, "failed to create table for result: %s", err_msg);
 
+  char* compression_option_codec_view_structure =
+  "CREATE VIEW IF NOT EXISTS compression_option_codec_view AS"
+  "   SELECT a.comp_id as comp_id, a.codec_id as codec_id, "
+  "     b.name as OP_name, c.value as OP_Value"
+  "   FROM compression as a, compression_option as c, option as b"
+  "   WHERE a.comp_id = c.comp_id AND c.option_id = b.option_id;";
+  ret = sqlite3_exec(ctx->db, compression_option_codec_view_structure,
+    0 ,0, &err_msg);
+  check(ret == SQLITE_OK,
+    "failed to create table for compression_option_codec_view_structure: %s",
+    err_msg);
+
   return OCDATA_SUCCESS;
 error:
   return OCDATA_FAILURE;
@@ -285,13 +297,55 @@ error:
 ocdataStatus
 ocdata_add_comp_option(ocdataContext* ctx, ocdataCompressionOption* compOption)
 {
+  int ret = SQLITE_OK;
+  check(compOption->value > 0, "invalid compOption");
+  check(compOption->option_id > 0, "invalid option_id pointer");
+  check(compOption->comp_id > 0, "invalid comp_id pointer");
 
+  // We require a valid compression id to fulfil the foreign key in sqlite
+  check(compOption->comp_id->comp_id > 0,
+    "ocdataCompressionOption does not point to valid compression");
+
+  // Check and get Option id
+  if(compOption->option_id->option_id <= 0)
+    check(ocdata_add_option(ctx,compOption->option_id) == OCDATA_SUCCESS,
+      "failed to insert new option");
+
+  char* sql = "SELECT rowid FROM compression_option "
+              " WHERE option_id = ? "
+              " AND comp_id = ? ;";
+  sqlite3_stmt* stmt;
+  sqlite3_prepare_v2(ctx->db, sql, -1, &stmt, 0);
+  sqlite3_bind_int(stmt,1,compOption->option_id->option_id);
+  sqlite3_bind_int(stmt,2,compOption->comp_id->comp_id);
+  ret = sqlite3_step(stmt);
+  if(ret == SQLITE_DONE)
+  {
+    sqlite3_bind_int(ctx->compression_option_add,1,
+      compOption->comp_id->comp_id);
+    sqlite3_bind_int(ctx->compression_option_add,2,
+      compOption->option_id->option_id);
+    sqlite3_bind_text(ctx->compression_option_add, 3, compOption->value,
+      strlen(compOption->value), SQLITE_STATIC);
+    ret = sqlite3_step(ctx->compression_option_add);
+    check(ret == SQLITE_DONE,"failed to insert compression_option:%s",
+      sqlite3_errmsg(ctx->db));
+    RESET_STATEMENT(ctx->db, ctx->compression_option_add, ret);
+  }
+  sqlite3_finalize(stmt);
+
+  return OCDATA_SUCCESS;
+error:
+  return OCDATA_FAILURE;
 }
 
 ocdataStatus
-ocdata_add_comp_options(ocdataContext* ctx, ocdataCompressionOption** options)
+ocdata_add_comp_options(ocdataContext* ctx, List* options)
 {
-
+  ocutils_list_foreach_f(options, cur)
+  {
+    ocdata_add_comp_option(ctx,cur->value);
+  }
 }
 
 ocdataStatus
@@ -309,7 +363,7 @@ ocdata_add_codec(ocdataContext* ctx, ocdataCodec* codec)
 
   // get plugin id or instert it into db
   ret = ocdata_add_plugin(ctx,codec->plugin_id);
-  check(ret = OCDATA_SUCCESS, "failed to get plugin id or insert plugin");
+  check(ret == OCDATA_SUCCESS, "failed to get plugin id or insert plugin");
   check(codec->plugin_id->plugin_id > 0, "invalid plugin id.");
   sqlite3_bind_int(ctx->codec_add, 1, codec->plugin_id->plugin_id);
   sqlite3_bind_text(ctx->codec_add, 2, codec->name,
@@ -325,9 +379,96 @@ error:
 }
 
 ocdataStatus
+ocdata_get_comp_id(ocdataContext* ctx, ocdataCompresion* compression)
+{
+  sqlite3_stmt* querry;
+  int           ret       =   SQLITE_OK;
+  char *        fmtquerry =   "SELECT comp_id, count(comp_id) as foundops"
+                              "  FROM compression_option_codec_view"
+                              "  WHERE codec_id = %d"
+                              "  AND (%s)"
+                              "  GROUP BY comp_id"
+                              "  ORDER BY foundops DESC;";
+  char *        fmtAnd    =   "(OP_value = \"%s\" AND OP_name = \"%s\")";
+  char *        optSearch =   calloc(1,1);
+  ocutils_list_foreach_f(compression->options, cur)
+  {
+    ocdataCompressionOption* curOp = (ocdataCompressionOption*) cur->value;
+    size_t tmpsize = snprintf(NULL,0,fmtAnd,curOp->value,curOp->option_id->name);
+    char*  tmpstr  = calloc(tmpsize+1,1);
+    sprintf(tmpstr,fmtAnd,curOp->value,curOp->option_id->name);
+    char* ret = realloc(optSearch, strlen(optSearch) + strlen(tmpstr)+6);
+    if(!(ret > 0))
+    {
+        log_err("failed to reallocate string buffer. FATAL");
+        exit(EXIT_FAILURE);
+    }
+    strcat(ret,tmpstr);
+    if(cur->next > 0)
+    {
+      strcat(ret," OR ");
+    }
+    optSearch = ret;
+    free(tmpstr);
+  }
+  size_t tmpsize = snprintf(NULL,0,fmtquerry,
+    compression->codec_id->codec_id,
+    optSearch);
+  char*  tmpstr  = calloc(tmpsize+1,1);
+  sprintf(tmpstr,fmtquerry,
+    compression->codec_id->codec_id,
+    optSearch);
+
+  ret = sqlite3_prepare_v2(ctx->db, tmpstr , -1 , &querry, NULL);
+  // Early freeing of resources which are no longer needed
+  free(optSearch);
+  free(tmpstr);
+
+  ret = sqlite3_step(querry);
+  if(ret != SQLITE_DONE && ret != SQLITE_OK)
+  {
+    int count = sqlite3_column_int(querry, 1);
+    if(count == compression->options->items)
+      compression->comp_id = sqlite3_column_int(querry, 0);
+  }
+  sqlite3_finalize(querry);
+
+  return OCDATA_SUCCESS;
+error:
+  return OCDATA_FAILURE;
+}
+
+ocdataStatus
 ocdata_add_comp(ocdataContext* ctx, ocdataCompresion* compression)
 {
+  sqlite3_stmt* querry;
+  int ret = SQLITE_OK;
+  check(compression > 0, "invalid compression pointer");
+  check(compression->codec_id > 0, "invalid codec pointer");
 
+  ocdata_add_codec(ctx,compression->codec_id);
+
+  // check if the given compression is allready in our database
+  ret = ocdata_get_comp_id(ctx,compression);
+  if(compression->comp_id >0)
+    return OCDATA_SUCCESS;
+
+  sqlite3_bind_int(ctx->compression_add, 1, compression->codec_id->codec_id);
+  sqlite3_step(ctx->compression_add);
+  compression->comp_id = sqlite3_last_insert_rowid(ctx->db);
+  RESET_STATEMENT(ctx->db, ctx->compression_add, ret);
+
+  ocutils_list_foreach_f(compression->options, cur)
+  {
+    ((ocdataCompressionOption*) cur->value)->comp_id = compression;
+  }
+
+  // Insert options into database
+  ocdata_add_comp_options(ctx,compression->options);
+
+  return OCDATA_SUCCESS;
+error:
+  return OCDATA_FAILURE;
 }
 
 ocdataStatus
