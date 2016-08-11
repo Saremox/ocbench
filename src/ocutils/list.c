@@ -34,7 +34,11 @@ void  ocutils_list_addpos (List* list, void* val, int64_t position)
     "invalid position. greater than size of list");
   ListNode* newnode = calloc(1,sizeof(ListNode));
   newnode->value = val;
-  if(position == ocutils_list_size(list))
+  if(ocutils_list_size(list) == 0)
+  {
+    list->tail = list->head = newnode;
+  }
+  else if(position == ocutils_list_size(list))
   {
     newnode->prev = list->tail;
     list->tail = list->tail->next = newnode;
@@ -58,6 +62,7 @@ void  ocutils_list_addpos (List* list, void* val, int64_t position)
     newnode->prev = prev;
     newnode->next = next;
   }
+  list->items++;
 error:
   return;
 }
@@ -95,7 +100,7 @@ void* ocutils_list_rempos (List* list, int64_t position)
     next->next->prev = prev;
     free(next);
   }
-
+  list->items--;
   return val;
 error:
   return (void*) -1;
@@ -132,4 +137,12 @@ void* ocutils_list_get (List* list, int64_t position)
   val = next->value;
 
   return val;
+}
+
+void ocutils_list_sort (List* list, ocutilsListSortFunction sortfkt)
+{
+  for(int i=0; i < ocutils_list_size(list); i++)
+  {
+
+  }
 }
