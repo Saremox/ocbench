@@ -474,7 +474,28 @@ error:
 ocdataStatus
 ocdata_add_result(ocdataContext* ctx, ocdataResult* result)
 {
+  int ret = SQLITE_OK;
+  check(result > 0, "invalid result pointer");
+  check(result->comp_id > 0, "invalid compression pointer");
+  check(result->file_id > 0, "invalid file pointer");
 
+  check(ocdata_add_comp(ctx,result->comp_id) == OCDATA_SUCCESS,
+    "failed to insert compression");
+  check(ocdata_add_file(ctx,result->file_id) == OCDATA_SUCCESS,
+    "failed to insert files");
+
+  sqlite3_bind_int(ctx->result_add, 1, result->comp_id->comp_id);
+  sqlite3_bind_int(ctx->result_add, 2, result->file_id->file_id);
+  sqlite3_bind_int(ctx->result_add, 3, result->compressed_size);
+  sqlite3_bind_int(ctx->result_add, 4, result->time);
+  ret = sqlite3_step(ctx->result_add);
+
+  // TODO what happens if data set allready is in db? sqlite3 will complain
+  // of unmet constraints since comp_id and file_id are the PRIMARY KEY
+
+  return OCDATA_SUCCESS;
+error:
+  return OCDATA_FAILURE;
 }
 
 ocdataStatus

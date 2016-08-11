@@ -69,8 +69,8 @@ struct __ocdataCompresion {
 };
 
 struct __ocdataResult{
-  ocdataFile*       file;
   ocdataCompresion* comp_id;
+  ocdataFile*       file_id;
   size_t            compressed_size;
   int64_t           time;
 };
