@@ -1,6 +1,7 @@
 #include "ocunit.h"
 #include "ocsched/ocsched.h"
 #include <unistd.h>
+#include <time.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
 
@@ -33,7 +34,8 @@ int TestCommMasterToChildChild(ocschedProcessContext* ctx, void* data) {
   int count = 0, tries = 0;
   while (count < strlen(TESTSTRING) - 1 && tries <= 100) {
     ioctl(ctx->comm.pipe_in, FIONREAD, &count);
-    usleep(100);
+    struct timespec sleeptimer = {0,100000};
+    nanosleep(&sleeptimer,NULL);
     tries++;
   }
   oc_assert(tries < 100, " child timeout on reading pipe");
@@ -77,7 +79,8 @@ int TestCommChildToMaster()
 
   while (count < strlen(TESTSTRING) - 1 && tries <= 100) {
     ioctl(ctx->comm.pipe_in, FIONREAD, &count);
-    usleep(100);
+    struct timespec sleeptimer = {0,100000};
+    nanosleep(&sleeptimer,NULL);
     tries++;
   }
   oc_assert(tries < 100, " child timeout on reading pipe");

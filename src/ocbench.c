@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <wait.h>
 #include <getopt.h>
+#include <time.h>
 #include "debug.h"
 #include "ocbenchConfig.h"
 #include "ocmemfd/ocmemfd.h"
@@ -74,7 +75,8 @@ void childprocess(ocschedProcessContext* parent, void* data)
     }
     else
       recvBytes += tmp;
-    usleep(100);
+    struct timespec sleeptimer = {0,100000};
+    nanosleep(&sleeptimer,NULL);
     read_tries++;
   }
 
