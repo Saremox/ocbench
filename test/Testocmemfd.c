@@ -7,6 +7,8 @@
 
 #define SIZEOFMEMFD 512
 
+int verbosityLevel = OCDEBUG_DEBUG;
+
 ocMemfdContext * fd;
 
 int Testocmemfd_create_context()

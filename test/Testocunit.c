@@ -1,5 +1,7 @@
 #include "ocunit.h"
 
+int verbosityLevel = OCDEBUG_DEBUG;
+
 int TestOcunitAssert()
 {
   oc_assert(1 == 1, "test is true but assert fires");

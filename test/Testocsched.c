@@ -4,6 +4,8 @@
 #include <sys/wait.h>
 #include <sys/ioctl.h>
 
+int verbosityLevel = OCDEBUG_DEBUG;
+
 #define EXIT_TEST_OK 42
 #define TESTSTRING "Hello world!"
 

@@ -10,6 +10,8 @@
 #include "ocutils/list.h"
 #include <squash/squash.h>
 
+int verbosityLevel = OCDEBUG_ERROR;
+
 #define MAX_MEMFD_BUF 1024
 
 void printhelp(char* programname)
@@ -26,7 +28,11 @@ void printhelp(char* programname)
 "                   Default: \"bzip2,lzma,gzip\"\n"
 "  -w, --Worker     INT ammount of worker processes.\n"
 "                   Default: 1\n\n"
-"  -v, --verbose    Be more verbosive\n"
+"  -v, --verbose    more verbosity equals --log-level=2\n"
+"  -l, --log-level  INT 0 LOG_ERR\n"
+"                       1 LOG_WARN\n"
+"                       2 LOG_INFO\n"
+"                       3 LOG_DEBUG\n"
 "  -h, --help       Print this page\n"
 "  -u, --Usage      Print this page\n"
 "  -V, --version    Print version of %s\n\n"
@@ -137,7 +143,7 @@ int compressionTest(char * file)
 
 void parse_arguments(int argc, char *argv[])
 {
-  int c;
+  int c,tmp;
   int optind = 0;
 
   while (1) {
@@ -149,13 +155,14 @@ void parse_arguments(int argc, char *argv[])
         {"worker",    required_argument, 0, 'w'},
         {"directory", required_argument, 0, 'd'},
         {"verbose",   no_argument,       0, 'v'},
+        {"log-level", required_argument, 0, 'l'},
         {"help",      no_argument,       0, 'h'},
         {"usage",     no_argument,       0, 'u'},
         {"version",   no_argument,       0, 'V'},
         {0,           0,                 0,  0 }
     };
 
-    c = getopt_long(argc, argv, "c:D:w:vd:huV",
+    c = getopt_long(argc, argv, "c:D:w:vd:huVl:",
              long_options, &option_index);
     if (c == -1)
       break;
@@ -164,19 +171,23 @@ void parse_arguments(int argc, char *argv[])
     case 'c':
       debug("Setting codecs to: \"%s\"",optarg);
       break;
-
     case 'D':
       debug("Setting Database file to: \"%s\"",optarg);
       break;
-
     case 'w':
       debug("Setting Worker count to: \"%s\"",optarg);
       break;
-
     case 'v':
       debug("Turn on Verbosity");
+      verbosityLevel = OCDEBUG_INFO;
       break;
-
+    case 'l':
+      tmp = atoi(optarg);
+      if(tmp >= 0 && tmp <= OCDEBUG_DEBUG)
+        verbosityLevel = tmp;
+      else
+        log_err("Invalid log level: \"%s\"",optarg);
+      break;
     case 'd':
       debug("Setting directory for analysis to: \"%s\"",optarg);
       break;
