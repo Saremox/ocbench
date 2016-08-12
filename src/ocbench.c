@@ -1,13 +1,50 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wait.h>
+#include <getopt.h>
 #include "debug.h"
 #include "ocbenchConfig.h"
 #include "ocmemfd/ocmemfd.h"
 #include "ocsched/ocsched.h"
+#include "ocdata/ocdata.h"
+#include "ocutils/list.h"
 #include <squash/squash.h>
 
 #define MAX_MEMFD_BUF 1024
+
+void printhelp(char* programname)
+{
+  printf(
+"Usage: %s [OPTION]... --directory=./\n"
+"\n"
+"Options:\n"
+"  -D, --database   PATH to sqlite3 database file\n"
+"                   Default: ./results.sqlite3\n"
+"  -d, --directory  PATH to directory which will be analyzed\n"
+"                   Default: current working directory\n"
+"  -c, --codecs     STRING comma seperated list of codecs which will be used\n"
+"                   Default: \"bzip2,lzma,gzip\"\n"
+"  -w, --Worker     INT ammount of worker processes.\n"
+"                   Default: 1\n\n"
+"  -v, --verbose    Be more verbosive\n"
+"  -h, --help       Print this page\n"
+"  -u, --Usage      Print this page\n"
+"  -V, --version    Print version of %s\n\n"
+,programname,programname);
+  exit(EXIT_SUCCESS);
+}
+
+void printversion(char* programname)
+{
+printf(
+"%s openCompressBench Version %d.%d\n"
+"Copyright (C) 2016 Michael Strassberger "
+"<saremox@linux.com>\n"
+"openCompressBench comes with ABSOLUTELY NO WARRANTY.\n"
+"This is free software, and you are welcome\n"
+"to redistribute it under certain conditions;\n",
+programname,OCBENCH_VERSION_MAJOR,OCBENCH_VERSION_MINOR);
+}
 
 void childprocess(ocschedProcessContext* parent, void* data)
 {
@@ -98,23 +135,83 @@ int compressionTest(char * file)
   return 0;
 }
 
+void parse_arguments(int argc, char *argv[])
+{
+  int c;
+  int optind = 0;
+
+  while (1) {
+    int this_option_optind = optind ? optind : 1;
+    int option_index = 0;
+    static struct option long_options[] = {
+        {"codecs",    required_argument, 0, 'c'},
+        {"database",  required_argument, 0, 'D'},
+        {"worker",    required_argument, 0, 'w'},
+        {"directory", required_argument, 0, 'd'},
+        {"verbose",   no_argument,       0, 'v'},
+        {"help",      no_argument,       0, 'h'},
+        {"usage",     no_argument,       0, 'u'},
+        {"version",   no_argument,       0, 'V'},
+        {0,           0,                 0,  0 }
+    };
+
+    c = getopt_long(argc, argv, "c:D:w:vd:huV",
+             long_options, &option_index);
+    if (c == -1)
+      break;
+
+    switch (c) {
+    case 'c':
+      debug("Setting codecs to: \"%s\"",optarg);
+      break;
+
+    case 'D':
+      debug("Setting Database file to: \"%s\"",optarg);
+      break;
+
+    case 'w':
+      debug("Setting Worker count to: \"%s\"",optarg);
+      break;
+
+    case 'v':
+      debug("Turn on Verbosity");
+      break;
+
+    case 'd':
+      debug("Setting directory for analysis to: \"%s\"",optarg);
+      break;
+    case 'h':
+    case 'u':
+      printhelp(argv[0]);
+      break;
+    case 'V':
+      printversion(argv[0]);
+      exit(EXIT_SUCCESS);
+    }
+  }
+}
+
 int main (int argc, char *argv[])
 {
-  if (argc < 2)
-  {
-    fprintf(stdout,"%s openCompressBench Version %d.%d\n"
-            "Copyright (C) 2016 Michael Strassberger "
-            "<saremox@linux.com>\n"
-            "openCompressBench comes with ABSOLUTELY NO WARRANTY; for details\n"
-            "type `show w'.  This is free software, and you are welcome\n"
-            "to redistribute it under certain conditions; type `show c'\n"
-            "for details.\n\n",
-            argv[0],
-            OCBENCH_VERSION_MAJOR,
-            OCBENCH_VERSION_MINOR);
-    fprintf(stdout,"Usage: %s FILE_PATH\n",argv[0]);
-    return 1;
-  }
+  parse_arguments(argc,argv);
+  ocdataContext* myctx;
+  ocdataFile testfile   = {-1,"/src/ocBench",5000};
+  ocdataPlugin bzip2p   = {-1,"bzip2"};
+  ocdataCodec bzip2     = {-1,&bzip2p ,"bzip2"};
+  ocdataOption level    = {-1,"Level"};
+  ocdataOption dictsize = {-1,"Dict Size"};
+  ocdataCompresion comp = {-1,&bzip2,ocutils_list_create()};
+  ocdataCompressionOption levelbzip2 = {&comp,&level,"7"};
+  ocdataCompressionOption dictsizebzip2 = {&comp,&dictsize,"128"};
+  ocdataResult            res = {&comp,&testfile,2500,2500};
+  ocutils_list_push(comp.options,&levelbzip2);
+  ocutils_list_push(comp.options,&dictsizebzip2);
+
+  ocdata_create_context(&myctx,"testdb.sqlite",0);
+
+  ocdata_add_result(myctx,&res);
+
   compressionTest(argv[1]);
+  ocdata_destroy_context(&myctx);
   return 0;
 }

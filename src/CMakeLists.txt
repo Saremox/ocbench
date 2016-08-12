@@ -9,5 +9,5 @@ configure_file(
 )
 
 add_executable(ocBench ocbench.c)
-target_link_libraries(ocBench ocdata ocmemfd ocsched ${Squash_LIBRARIES})
+target_link_libraries(ocBench ocdata ocmemfd ocsched ocutils ${Squash_LIBRARIES})
 target_include_directories(ocBench PUBLIC ${Squash_INCLUDE_DIRS})
