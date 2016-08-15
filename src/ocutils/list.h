@@ -8,11 +8,14 @@ struct __ListNode;
 
 typedef struct __List     List;
 typedef struct __ListNode ListNode;
+typedef int (*ocutilsListSortFunction)(ListNode*,ListNode*);
+typedef int (*ocutilsListFreeFunction)(void* ptr);
 
 struct __List {
-  int64_t   items;
-  ListNode* head;
-  ListNode* tail;
+  int64_t                 items;
+  ListNode*               head;
+  ListNode*               tail;
+  ocutilsListFreeFunction cleanup;
 };
 
 struct __ListNode {
@@ -25,13 +28,15 @@ struct __ListNode {
 #define ocutils_list_head(LIST) LIST->head
 #define ocutils_list_tail(LIST) LIST->tail
 
-List*   ocutils_list_create ();
+List*   ocutils_list_create (void);
+void    ocutils_list_freefp (List* list, ocutilsListFreeFunction fp);
 void    ocutils_list_destroy(List* list);
 void    ocutils_list_remptr (List* list, void* val);
 void    ocutils_list_addpos (List* list, void* val, int64_t position);
 void*   ocutils_list_rempos (List* list, int64_t position);
 void*   ocutils_list_get    (List* list, int64_t position);
 int64_t ocutils_list_getpos (List* list, void* val);
+void    ocutils_list_sort   (List* list, ocutilsListSortFunction);
 
 #define ocutils_list_add(LIST, VALUE) \
   ocutils_list_addpos(LIST, VALUE, ocutils_list_size(LIST))

@@ -7,12 +7,21 @@ List* ocutils_list_create()
   return calloc(1,sizeof(List));
 }
 
+void    ocutils_list_freefp (List* list, ocutilsListFreeFunction fp)
+{
+  list->cleanup = fp;
+}
+
 void  ocutils_list_destroy(List* list)
 {
   ocutils_list_foreach_f(list, cur)
   {
     if(cur->prev)
+    {
+      if(list->cleanup)
+        list->cleanup(cur->prev);
       free(cur->prev);
+    }
   }
   if(ocutils_list_tail(list))
     free(ocutils_list_tail(list));
@@ -141,8 +150,5 @@ void* ocutils_list_get (List* list, int64_t position)
 
 void ocutils_list_sort (List* list, ocutilsListSortFunction sortfkt)
 {
-  for(int i=0; i < ocutils_list_size(list); i++)
-  {
-
-  }
+  // Function STUB
 }
