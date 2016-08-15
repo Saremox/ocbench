@@ -100,6 +100,13 @@ ocdata_get_id(
   int64_t* id_ptr
 );
 
+void ocdata_free_file         (ocdataFile*              file);
+void ocdata_free_plugin       (ocdataPlugin*            plugin);
+void ocdata_free_comp_option  (ocdataCompressionOption* comp_option);
+void ocdata_free_codec        (ocdataCodec*             codec);
+void ocdata_free_comp         (ocdataCompresion*        comp);
+void ocdata_free_result       (ocdataResult*            result);
+
 ocdataStatus
 ocdata_add_file(
   ocdataContext* ctx,

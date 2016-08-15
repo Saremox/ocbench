@@ -191,6 +191,36 @@ error:
 
 /* interface functions */
 
+void ocdata_free_file         (ocdataFile*              file)
+{
+  free(file->path);
+}
+
+void ocdata_free_plugin       (ocdataPlugin*            plugin)
+{
+  free(plugin->name);
+}
+
+void ocdata_free_comp_option  (ocdataCompressionOption* comp_option)
+{
+
+}
+
+void ocdata_free_codec        (ocdataCodec*             codec)
+{
+  free(codec->name);
+}
+
+void ocdata_free_comp         (ocdataCompresion*        comp)
+{
+  
+}
+
+void ocdata_free_result       (ocdataResult*            result)
+{
+
+}
+
 ocdataStatus
 ocdata_create_context(ocdataContext** ctx, char* dbfilepath, int64_t flags)
 {
