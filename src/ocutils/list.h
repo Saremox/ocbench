@@ -9,7 +9,7 @@ struct __ListNode;
 typedef struct __List     List;
 typedef struct __ListNode ListNode;
 typedef int (*ocutilsListSortFunction)(ListNode*,ListNode*);
-typedef int (*ocutilsListFreeFunction)(void* ptr);
+typedef void (*ocutilsListFreeFunction)(void* ptr);
 
 struct __List {
   int64_t                 items;
