@@ -213,7 +213,7 @@ void ocdata_free_codec        (ocdataCodec*             codec)
 
 void ocdata_free_comp         (ocdataCompresion*        comp)
 {
-  
+
 }
 
 void ocdata_free_result       (ocdataResult*            result)
@@ -250,7 +250,7 @@ ocdata_add_file(ocdataContext* ctx, ocdataFile* file)
   int ret = SQLITE_OK;
   check(file->path > 0 && strlen(file->path) > 0,
     "not a valid file path: %s",file->path);
-  check(file->size > 0, "0 bytes invalid file size.");
+  check(file->size >= 0, "less than 0 bytes invalid file size.");
 
   // check if entry allready exists
   ocdataStatus st = ocdata_get_id(ctx, "file", "path",
