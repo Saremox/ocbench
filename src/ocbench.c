@@ -1,8 +1,11 @@
+#include <dirent.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <wait.h>
-#include <getopt.h>
 #include <time.h>
+#include <wait.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "debug.h"
 #include "ocbenchConfig.h"
 #include "ocmemfd/ocmemfd.h"
@@ -11,11 +14,19 @@
 #include "ocutils/list.h"
 #include <squash/squash.h>
 
-int verbosityLevel = OCDEBUG_ERROR;
 
 #define MAX_MEMFD_BUF 1024
 
-void printhelp(char* programname)
+// options
+
+char* databasePath    = "ocbench.sqlite";
+char* directoryPath   = "./";
+char* codecs          = "bzip2:bzip2,lzma:xz,zlib:gzip";
+int   worker          = 1;
+int   verbosityLevel  = OCDEBUG_ERROR;
+
+
+void print_help(char* programname)
 {
   printf(
 "Usage: %s [OPTION]... --directory=./\n"
@@ -25,8 +36,9 @@ void printhelp(char* programname)
 "                   Default: ./results.sqlite3\n"
 "  -d, --directory  PATH to directory which will be analyzed\n"
 "                   Default: current working directory\n"
-"  -c, --codecs     STRING comma seperated list of codecs which will be used\n"
-"                   Default: \"bzip2,lzma,gzip\"\n"
+"  -c, --codecs     STRING comma seperated list of codecs which will\n"
+"                   be used. Format: \"plugin:codec;codec,plugin:...\"\n"
+"                   Default: \"bzip2:bzip2,lzma:xz,zlib:gzip\"\n"
 "  -w, --Worker     INT ammount of worker processes.\n"
 "                   Default: 1\n\n"
 "  -v, --verbose    more verbosity equals --log-level=2\n"
@@ -41,7 +53,7 @@ void printhelp(char* programname)
   exit(EXIT_SUCCESS);
 }
 
-void printversion(char* programname)
+void print_version(char* programname)
 {
 printf(
 "%s openCompressBench Version %d.%d\n"
@@ -53,7 +65,71 @@ printf(
 programname,OCBENCH_VERSION_MAJOR,OCBENCH_VERSION_MINOR);
 }
 
-void childprocess(ocschedProcessContext* parent, void* data)
+off_t file_size(const char *filename) {
+  struct stat st;
+
+  if (stat(filename, &st) == 0)
+    return st.st_size;
+
+  return -1;
+}
+
+bool parse_dir(char* path, List* files)
+{
+  DIR* curdir;
+  struct dirent* currentfile;
+
+  if(path[strlen(path)-1] != '/')
+  {
+    char* newpath = malloc(snprintf(0, 0, "%s%s",path,"/")+1);
+    sprintf(newpath, "%s%s\0", path, "/");
+    path = newpath;
+  }
+
+  debug("Open Dir: %s",path);
+  curdir = opendir(path);
+  if(curdir == NULL && errno != ENOTDIR)
+  {
+    log_warn("Cannot open path \"%s\" as directory",path);
+    return false;
+  }
+  else if (curdir == NULL && errno == ENOTDIR)
+  {
+    return false;
+  }
+  debug("Reading Dir: %s",path);
+  while ((currentfile = readdir(curdir)) != 0) \
+  {
+    // Skip cur and parent directory fd's
+    if( strcmp(currentfile->d_name, ".")  == 0 ||
+        strcmp(currentfile->d_name, "..") == 0)
+        continue;
+    debug("Testing File: %s",currentfile->d_name);
+    char* filepath = malloc(snprintf(0, 0, "%s%s",path,
+                                     currentfile->d_name)+1);
+    sprintf(filepath,"%s%s\0", path, currentfile->d_name);
+    char* dircheck = malloc(snprintf(0, 0, "%s%s",filepath,"/")+1);
+    sprintf(dircheck, "%s%s\0", filepath, "/");
+    if (parse_dir(dircheck, files)) {
+      free(filepath);
+      free(dircheck);
+      continue;
+    }
+    free(dircheck);
+    ocdataFile* file = malloc(sizeof(ocdataFile));
+    file->path    = filepath;
+    file->size    = file_size(filepath);
+    file->file_id = -1;
+    ocutils_list_add(files, file);
+    debug("Add: %s with a size of %ld bytes",file->path,file->size);
+  }
+  closedir(curdir);
+  free(currentfile);
+  errno=0;
+  return true;
+}
+
+void child_process(ocschedProcessContext* parent, void* data)
 {
   int read_tries = 0;
   char recvbuf[1024];
@@ -120,7 +196,7 @@ int compressionTest(char * file)
 
   debug("forking child");
   ocschedProcessContext * child =
-    ocsched_fork_process(childprocess,"child",fd);
+    ocsched_fork_process(child_process,"child",fd);
   debug("loading file");
   ocmemfd_load_file(fd,file);
   debug("send filesize %d bytes to child",(int32_t) fd->size);
@@ -141,6 +217,64 @@ int compressionTest(char * file)
   ocsched_destroy_global_mqueue();
 
   return 0;
+}
+
+void parse_codecs(char* codecstring, List* codecList)
+{
+  char*  copycodecs    = malloc(strlen(codecstring)+1);
+                         memcpy(copycodecs, codecstring, strlen(codecstring)+1);
+  List*  pluginstrings = ocutils_list_create();
+
+  // Reading plugin string
+  char* curptr = strtok(copycodecs, ",");
+  while (curptr != NULL)
+  {
+    ocutils_list_add(pluginstrings, curptr);
+    curptr = strtok(NULL, ",");
+  }
+
+  ocutils_list_foreach_f(pluginstrings, pluginstring)
+  {
+    char* pluginname = strtok((char*) pluginstring->value, ":");
+    ocdataPlugin* tmpPlugin = malloc(sizeof(ocdataPlugin));
+    tmpPlugin->name       = malloc(strlen(pluginname)+1);
+                            memcpy(tmpPlugin->name,pluginname,
+                                   strlen(pluginname)+1);
+    tmpPlugin->plugin_id  = -1;
+
+    SquashPlugin* testplugin = squash_get_plugin(pluginname);
+    check(testplugin != NULL,"Squash didn't found plugin name \"%s\"",
+      pluginname);
+
+    char* codecsForPlugin = strtok(NULL, ":");
+    check(codecsForPlugin != NULL,
+      "no codecs specified for plugin %s. Forgot ':'?"
+      ,pluginname)
+
+    char* codecName = strtok(codecsForPlugin, ";");
+    while (codecName != NULL)
+    {
+      ocdataCodec* tmpCodec = malloc(sizeof(ocdataCodec));
+      tmpCodec->codec_id    = -1;
+      tmpCodec->plugin_id   = tmpPlugin;
+      tmpCodec->name        = malloc(strlen(codecName)+1);
+                              memcpy(tmpCodec->name, codecName,
+                                     strlen(codecName)+1);
+      ocutils_list_add(codecList, tmpCodec);
+      SquashCodec* testcodec = squash_get_codec(tmpCodec->name);
+      check(testcodec != NULL,
+        "Squash didn't found codec \"%s\" in plugin \"%s\"",
+        tmpCodec->name,tmpCodec->plugin_id->name);
+      codecName = strtok(NULL, ";");
+    }
+
+  }
+
+  free(copycodecs);
+  ocutils_list_destroy(pluginstrings);
+  return;
+error:
+  exit(EXIT_FAILURE);
 }
 
 void parse_arguments(int argc, char *argv[])
@@ -172,12 +306,16 @@ void parse_arguments(int argc, char *argv[])
     switch (c) {
     case 'c':
       debug("Setting codecs to: \"%s\"",optarg);
+      codecs = optarg;
       break;
     case 'D':
       debug("Setting Database file to: \"%s\"",optarg);
+      databasePath = optarg;
       break;
     case 'w':
       debug("Setting Worker count to: \"%s\"",optarg);
+      worker = atoi(optarg);
+      check(worker > 0, "Worker count must be greater than 0");
       break;
     case 'v':
       debug("Turn on Verbosity");
@@ -192,23 +330,46 @@ void parse_arguments(int argc, char *argv[])
       break;
     case 'd':
       debug("Setting directory for analysis to: \"%s\"",optarg);
+      directoryPath = optarg;
       break;
     case 'h':
     case 'u':
-      printhelp(argv[0]);
+      print_help(argv[0]);
       break;
     case 'V':
-      printversion(argv[0]);
+      print_version(argv[0]);
       exit(EXIT_SUCCESS);
     }
   }
+  return;
+  error:
+    print_help(argv[0]);
 }
 
 int main (int argc, char *argv[])
 {
+  List* files     = ocutils_list_create();
+  List* codecList = ocutils_list_create();
+
+  ocutils_list_freefp(files, (ocutilsListFreeFunction) ocdata_free_file);
+
   parse_arguments(argc,argv);
+  parse_dir(directoryPath, files);
+  parse_codecs(codecs,codecList);
+  if(verbosityLevel == OCDEBUG_DEBUG)
+  {
+    ocutils_list_foreach_f(codecList, curCodec)
+    {
+      debug("Plugin: %8s with Codec: %8s",
+        ((ocdataCodec*)curCodec->value)->plugin_id->name,
+        ((ocdataCodec*)curCodec->value)->name);
+    }
+  }
+  check(files->items > 0, "No Files found at \"%s\"",directoryPath);
+
+
   ocdataContext* myctx;
-  ocdataFile testfile   = {-1,"/src/ocBench",5000};
+  ocdataFile* testfile  = ocutils_list_get(files,0);
   ocdataPlugin bzip2p   = {-1,"bzip2"};
   ocdataCodec bzip2     = {-1,&bzip2p ,"bzip2"};
   ocdataOption level    = {-1,"Level"};
@@ -216,15 +377,25 @@ int main (int argc, char *argv[])
   ocdataCompresion comp = {-1,&bzip2,ocutils_list_create()};
   ocdataCompressionOption levelbzip2 = {&comp,&level,"7"};
   ocdataCompressionOption dictsizebzip2 = {&comp,&dictsize,"128"};
-  ocdataResult            res = {&comp,&testfile,2500,2500};
+  ocdataResult            res = {&comp,testfile,2500,2500};
   ocutils_list_push(comp.options,&levelbzip2);
   ocutils_list_push(comp.options,&dictsizebzip2);
 
-  ocdata_create_context(&myctx,"testdb.sqlite",0);
+  ocdata_create_context(&myctx,databasePath,0);
 
+  ocutils_list_foreach_f(files, file)
+  {
+    ocdata_add_file(myctx, (ocdataFile*)file->value);
+  }
   ocdata_add_result(myctx,&res);
 
-  compressionTest(argv[1]);
+  compressionTest(testfile->path);
   ocdata_destroy_context(&myctx);
-  return 0;
+
+  ocutils_list_destroy(codecList);
+  ocutils_list_destroy(files);
+  ocutils_list_destroy(comp.options);
+  return EXIT_SUCCESS;
+  error:
+  return EXIT_FAILURE;
 }
