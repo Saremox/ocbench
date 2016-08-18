@@ -47,7 +47,7 @@ export CMAKE_MODULE_PATH="$HOME/local/lib/cmake"
 You've now met all prerequisites to `git clone` and make ocbench. Building
 ocbench is as simple as:
 ```
-git checkout 14381903aa04fce420c759e518632310ba16f6cd
+git checkout 5ae4ae9f148a309e33d01510f478c3faa77beecf
 cmake -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
 make test
@@ -56,24 +56,45 @@ make test
 If all tests passes you're ready to use the application.
 
 **Note:** in the current state of development
-`ocbench` only is capable of compressing one file and showing compressed size of
-the file.
+`ocbench` only is capable of parsing a directory adding all files into a
+list and compressing one of them and showing compressed size of the file.
 
 ## Basic usage
 
 ```
-$ ./ocBench
-./ocBench openCompressBench Version 0.1
-Copyright (C) 2016 Michael Strassberger <saremox@linux.com>
-openCompressBench comes with ABSOLUTELY NO WARRANTY; for details
-type `show w'.  This is free software, and you are welcome
-to redistribute it under certain conditions; type `show c'
-for details.
+$ ./src/ocBench --help
+Usage: ./src/ocBench [OPTION]... --directory=./
 
-Usage: ./ocBench FILE_PATH
+Options:
+  -D, --database   PATH to sqlite3 database file
+                   Default: ./results.sqlite3
+  -d, --directory  PATH to directory which will be analyzed
+                   Default: current working directory
+  -c, --codecs     STRING comma seperated list of codecs which will
+                   be used. Format: "plugin:codec;codec,plugin:..."
+                   Default: "bzip2:bzip2,lzma:xz,zlib:gzip"
+  -w, --Worker     INT ammount of worker processes.
+                   Default: 1
 
+  -v, --verbose    more verbosity equals --log-level=2
+  -l, --log-level  INT 0 LOG_ERR
+                       1 LOG_WARN
+                       2 LOG_INFO
+                       3 LOG_DEBUG
+  -h, --help       Print this page
+  -u, --Usage      Print this page
+  -V, --version    Print version of ./src/ocBench
 
-$ ./ocBench ocBench
+$ ./src/ocBench --directory ./ -l 3
+[...]
+[DEBUG] (***/src/ocbench.c:  87): Open Dir: ./CMakeFiles/CMakeDirectoryInformation.cmake/
+[DEBUG] (***/src/ocbench.c: 122): Add: ./CMakeFiles/CMakeDirectoryInformation.cmake with a size of 633 bytes
+[DEBUG] (***/src/ocbench.c: 105): Testing File: feature_tests.c
+[...]
+[DEBUG] (***/src/ocbench.c: 363): Plugin:    bzip2 with Codec:    bzip2
+[DEBUG] (***/src/ocbench.c: 363): Plugin:     lzma with Codec:       xz
+[DEBUG] (***/src/ocbench.c: 363): Plugin:     zlib with Codec:     gzip
+[...]
 Recv from child: compressed from 21296 bytes to 6456 bytes with lzma
 ```
 
