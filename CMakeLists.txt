@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(openCompressBench)
 
+enable_testing()
+
 set (OCBENCH_VERSION_MAJOR 0)
 set (OCBENCH_VERSION_MINOR 1)
 
