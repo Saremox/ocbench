@@ -11,11 +11,15 @@
 #include "ocutils/list.h"
 #include <squash/squash.h>
 
-int verbosityLevel = OCDEBUG_ERROR;
+char* databasePath    = "ocbench.sqlite";
+char* directoryPath   = "./";
+char* codecs          = "bzip2:bzip2,lzma:xz,zlib:gzip";
+int   worker          = 1;
+int   verbosityLevel  = OCDEBUG_ERROR;
 
 #define MAX_MEMFD_BUF 1024
 
-void printhelp(char* programname)
+void print_help(char* programname)
 {
   printf(
 "Usage: %s [OPTION]... --directory=./\n"
@@ -25,8 +29,9 @@ void printhelp(char* programname)
 "                   Default: ./results.sqlite3\n"
 "  -d, --directory  PATH to directory which will be analyzed\n"
 "                   Default: current working directory\n"
-"  -c, --codecs     STRING comma seperated list of codecs which will be used\n"
-"                   Default: \"bzip2,lzma,gzip\"\n"
+"  -c, --codecs     STRING comma seperated list of codecs which will\n"
+"                   be used. Format: \"plugin:codec;codec,plugin:...\"\n"
+"                   Default: \"bzip2:bzip2,lzma:xz,zlib:gzip\"\n"
 "  -w, --Worker     INT ammount of worker processes.\n"
 "                   Default: 1\n\n"
 "  -v, --verbose    more verbosity equals --log-level=2\n"
@@ -41,7 +46,7 @@ void printhelp(char* programname)
   exit(EXIT_SUCCESS);
 }
 
-void printversion(char* programname)
+void print_version(char* programname)
 {
 printf(
 "%s openCompressBench Version %d.%d\n"
@@ -172,12 +177,16 @@ void parse_arguments(int argc, char *argv[])
     switch (c) {
     case 'c':
       debug("Setting codecs to: \"%s\"",optarg);
+      codecs = optarg;
       break;
     case 'D':
       debug("Setting Database file to: \"%s\"",optarg);
+      databasePath = optarg;
       break;
     case 'w':
       debug("Setting Worker count to: \"%s\"",optarg);
+      worker = atoi(optarg);
+      check(worker > 0, "Worker count must be greater than 0");
       break;
     case 'v':
       debug("Turn on Verbosity");
@@ -192,16 +201,20 @@ void parse_arguments(int argc, char *argv[])
       break;
     case 'd':
       debug("Setting directory for analysis to: \"%s\"",optarg);
+      directoryPath = optarg;
       break;
     case 'h':
     case 'u':
-      printhelp(argv[0]);
+      print_help(argv[0]);
       break;
     case 'V':
-      printversion(argv[0]);
+      print_version(argv[0]);
       exit(EXIT_SUCCESS);
     }
   }
+  return;
+  error:
+    print_help(argv[0]);
 }
 
 int main (int argc, char *argv[])
