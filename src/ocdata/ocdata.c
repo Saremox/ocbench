@@ -194,31 +194,34 @@ error:
 void ocdata_free_file         (ocdataFile*              file)
 {
   free(file->path);
+  free(file);
 }
 
 void ocdata_free_plugin       (ocdataPlugin*            plugin)
 {
   free(plugin->name);
+  free(plugin);
 }
 
 void ocdata_free_comp_option  (ocdataCompressionOption* comp_option)
 {
-
+  free(comp_option);
 }
 
 void ocdata_free_codec        (ocdataCodec*             codec)
 {
   free(codec->name);
+  free(codec);
 }
 
 void ocdata_free_comp         (ocdataCompresion*        comp)
 {
-
+  free(comp);
 }
 
 void ocdata_free_result       (ocdataResult*            result)
 {
-
+  free(result);
 }
 
 ocdataStatus

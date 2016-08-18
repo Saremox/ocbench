@@ -19,12 +19,16 @@ void  ocutils_list_destroy(List* list)
     if(cur->prev)
     {
       if(list->cleanup)
-        list->cleanup(cur->prev);
+        list->cleanup(cur->prev->value);
       free(cur->prev);
     }
   }
   if(ocutils_list_tail(list))
+  {
+    if(list->cleanup)
+      list->cleanup(ocutils_list_tail(list)->value);
     free(ocutils_list_tail(list));
+  }
   free(list);
 }
 
