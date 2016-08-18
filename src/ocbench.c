@@ -212,6 +212,64 @@ int compressionTest(char * file)
   return 0;
 }
 
+void parse_codecs(char* codecstring, List* codecList)
+{
+  char*  copycodecs    = malloc(strlen(codecstring)+1);
+                         memcpy(copycodecs, codecstring, strlen(codecstring)+1);
+  List*  pluginstrings = ocutils_list_create();
+
+  // Reading plugin string
+  char* curptr = strtok(copycodecs, ",");
+  while (curptr != NULL)
+  {
+    ocutils_list_add(pluginstrings, curptr);
+    curptr = strtok(NULL, ",");
+  }
+
+  ocutils_list_foreach_f(pluginstrings, pluginstring)
+  {
+    char* pluginname = strtok((char*) pluginstring->value, ":");
+    ocdataPlugin* tmpPlugin = malloc(sizeof(ocdataPlugin));
+    tmpPlugin->name       = malloc(strlen(pluginname)+1);
+                            memcpy(tmpPlugin->name,pluginname,
+                                   strlen(pluginname)+1);
+    tmpPlugin->plugin_id  = -1;
+
+    SquashPlugin* testplugin = squash_get_plugin(pluginname);
+    check(testplugin != NULL,"Squash didn't found plugin name \"%s\"",
+      pluginname);
+
+    char* codecsForPlugin = strtok(NULL, ":");
+    check(codecsForPlugin != NULL,
+      "no codecs specified for plugin %s. Forgot ':'?"
+      ,pluginname)
+
+    char* codecName = strtok(codecsForPlugin, ";");
+    while (codecName != NULL)
+    {
+      ocdataCodec* tmpCodec = malloc(sizeof(ocdataCodec));
+      tmpCodec->codec_id    = -1;
+      tmpCodec->plugin_id   = tmpPlugin;
+      tmpCodec->name        = malloc(strlen(codecName)+1);
+                              memcpy(tmpCodec->name, codecName,
+                                     strlen(codecName)+1);
+      ocutils_list_add(codecList, tmpCodec);
+      SquashCodec* testcodec = squash_get_codec(tmpCodec->name);
+      check(testcodec != NULL,
+        "Squash didn't found codec \"%s\" in plugin \"%s\"",
+        tmpCodec->name,tmpCodec->plugin_id->name);
+      codecName = strtok(NULL, ";");
+    }
+
+  }
+
+  free(copycodecs);
+  ocutils_list_destroy(pluginstrings);
+  return;
+error:
+  exit(EXIT_FAILURE);
+}
+
 void parse_arguments(int argc, char *argv[])
 {
   int c,tmp;
