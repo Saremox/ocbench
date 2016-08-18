@@ -1,8 +1,10 @@
+#include <dirent.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <wait.h>
-#include <getopt.h>
 #include <time.h>
+#include <wait.h>
+#include <sys/stat.h>
 #include "debug.h"
 #include "ocbenchConfig.h"
 #include "ocmemfd/ocmemfd.h"
@@ -11,13 +13,16 @@
 #include "ocutils/list.h"
 #include <squash/squash.h>
 
+
+#define MAX_MEMFD_BUF 1024
+
+// options
+
 char* databasePath    = "ocbench.sqlite";
 char* directoryPath   = "./";
 char* codecs          = "bzip2:bzip2,lzma:xz,zlib:gzip";
 int   worker          = 1;
 int   verbosityLevel  = OCDEBUG_ERROR;
-
-#define MAX_MEMFD_BUF 1024
 
 void print_help(char* programname)
 {
@@ -122,7 +127,7 @@ bool parse_dir(char* path, List* files)
   return true;
 }
 
-void childprocess(ocschedProcessContext* parent, void* data)
+void child_process(ocschedProcessContext* parent, void* data)
 {
   int read_tries = 0;
   char recvbuf[1024];
@@ -189,7 +194,7 @@ int compressionTest(char * file)
 
   debug("forking child");
   ocschedProcessContext * child =
-    ocsched_fork_process(childprocess,"child",fd);
+    ocsched_fork_process(child_process,"child",fd);
   debug("loading file");
   ocmemfd_load_file(fd,file);
   debug("send filesize %d bytes to child",(int32_t) fd->size);
@@ -260,7 +265,6 @@ void parse_codecs(char* codecstring, List* codecList)
         tmpCodec->name,tmpCodec->plugin_id->name);
       codecName = strtok(NULL, ";");
     }
-
   }
 
   free(copycodecs);
@@ -341,9 +345,29 @@ void parse_arguments(int argc, char *argv[])
 
 int main (int argc, char *argv[])
 {
+  List* files     = ocutils_list_create();
+  List* codecList = ocutils_list_create();
+
+  ocutils_list_freefp(files, (ocutilsListFreeFunction) ocdata_free_file);
+  ocutils_list_freefp(codecList, (ocutilsListFreeFunction) ocdata_free_codec);
+
   parse_arguments(argc,argv);
+  parse_dir(directoryPath, files);
+  parse_codecs(codecs,codecList);
+  if(verbosityLevel == OCDEBUG_DEBUG)
+  {
+    ocutils_list_foreach_f(codecList, curCodec)
+    {
+      debug("Plugin: %8s with Codec: %8s",
+        ((ocdataCodec*)curCodec->value)->plugin_id->name,
+        ((ocdataCodec*)curCodec->value)->name);
+    }
+  }
+  check(files->items > 0, "No Files found at \"%s\"",directoryPath);
+
+
   ocdataContext* myctx;
-  ocdataFile testfile   = {-1,"/src/ocBench",5000};
+  ocdataFile* testfile  = ocutils_list_get(files,0);
   ocdataPlugin bzip2p   = {-1,"bzip2"};
   ocdataCodec bzip2     = {-1,&bzip2p ,"bzip2"};
   ocdataOption level    = {-1,"Level"};
@@ -351,15 +375,25 @@ int main (int argc, char *argv[])
   ocdataCompresion comp = {-1,&bzip2,ocutils_list_create()};
   ocdataCompressionOption levelbzip2 = {&comp,&level,"7"};
   ocdataCompressionOption dictsizebzip2 = {&comp,&dictsize,"128"};
-  ocdataResult            res = {&comp,&testfile,2500,2500};
+  ocdataResult            res = {&comp,testfile,2500,2500};
   ocutils_list_push(comp.options,&levelbzip2);
   ocutils_list_push(comp.options,&dictsizebzip2);
 
-  ocdata_create_context(&myctx,"testdb.sqlite",0);
+  ocdata_create_context(&myctx,databasePath,0);
 
+  ocutils_list_foreach_f(files, file)
+  {
+    ocdata_add_file(myctx, (ocdataFile*)file->value);
+  }
   ocdata_add_result(myctx,&res);
 
-  compressionTest(argv[1]);
+  compressionTest(testfile->path);
   ocdata_destroy_context(&myctx);
-  return 0;
+
+  ocutils_list_destroy(codecList);
+  ocutils_list_destroy(files);
+  ocutils_list_destroy(comp.options);
+  return EXIT_SUCCESS;
+  error:
+  return EXIT_FAILURE;
 }
