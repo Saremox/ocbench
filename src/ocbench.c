@@ -58,6 +58,70 @@ printf(
 programname,OCBENCH_VERSION_MAJOR,OCBENCH_VERSION_MINOR);
 }
 
+off_t file_size(const char *filename) {
+  struct stat st;
+
+  if (stat(filename, &st) == 0)
+    return st.st_size;
+
+  return -1;
+}
+
+bool parse_dir(char* path, List* files)
+{
+  DIR* curdir;
+  struct dirent* currentfile;
+
+  if(path[strlen(path)-1] != '/')
+  {
+    char* newpath = malloc(snprintf(0, 0, "%s%s",path,"/")+1);
+    sprintf(newpath, "%s%s\0", path, "/");
+    path = newpath;
+  }
+
+  debug("Open Dir: %s",path);
+  curdir = opendir(path);
+  if(curdir == NULL && errno != ENOTDIR)
+  {
+    log_warn("Cannot open path \"%s\" as directory",path);
+    return false;
+  }
+  else if (curdir == NULL && errno == ENOTDIR)
+  {
+    return false;
+  }
+  debug("Reading Dir: %s",path);
+  while ((currentfile = readdir(curdir)) != 0) \
+  {
+    // Skip cur and parent directory fd's
+    if( strcmp(currentfile->d_name, ".")  == 0 ||
+        strcmp(currentfile->d_name, "..") == 0)
+        continue;
+    debug("Testing File: %s",currentfile->d_name);
+    char* filepath = malloc(snprintf(0, 0, "%s%s",path,
+                                     currentfile->d_name)+1);
+    sprintf(filepath,"%s%s\0", path, currentfile->d_name);
+    char* dircheck = malloc(snprintf(0, 0, "%s%s",filepath,"/")+1);
+    sprintf(dircheck, "%s%s\0", filepath, "/");
+    if (parse_dir(dircheck, files)) {
+      free(filepath);
+      free(dircheck);
+      continue;
+    }
+    free(dircheck);
+    ocdataFile* file = malloc(sizeof(ocdataFile));
+    file->path    = filepath;
+    file->size    = file_size(filepath);
+    file->file_id = -1;
+    ocutils_list_add(files, file);
+    debug("Add: %s with a size of %ld bytes",file->path,file->size);
+  }
+  closedir(curdir);
+  free(currentfile);
+  errno=0;
+  return true;
+}
+
 void childprocess(ocschedProcessContext* parent, void* data)
 {
   int read_tries = 0;
