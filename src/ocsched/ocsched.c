@@ -22,7 +22,7 @@ ocsched_get_msgq()
   if(global_job_queue > 0)
     return global_job_queue;
 
-  sprintf(msgQname,"/ocbench-work-queue-%d",getpid());
+  sprintf(msgQname,"/ocbench-work-queue",getpid());
   #if defined(O_CLOEXEC)
     #define MQ_FLAGS_USED O_CREAT | O_RDWR | O_CLOEXEC
   #else
