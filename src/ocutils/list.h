@@ -50,7 +50,7 @@ void    ocutils_list_sort   (List* list, ocutilsListSortFunction);
 #define ocutils_list_enqueue(LIST, VALUE) \
   ocutils_list_addpos(LIST, VALUE, ocutils_list_size(LIST))
 
-#define ocutils_list_dequene(LIST) \
+#define ocutils_list_dequeue(LIST) \
   ocutils_list_rempos(LIST,0)
 
 #define ocutils_list_foreach_f(LIST, ITERATOR) ListNode* _node = NULL;\
