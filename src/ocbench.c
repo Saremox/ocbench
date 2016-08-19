@@ -11,6 +11,7 @@
 #include "ocsched/ocsched.h"
 #include "ocdata/ocdata.h"
 #include "ocutils/list.h"
+#include "ocworker.h"
 #include <squash/squash.h>
 
 
@@ -118,7 +119,10 @@ bool parse_dir(char* path, List* files)
     file->path    = filepath;
     file->size    = file_size(filepath);
     file->file_id = -1;
-    ocutils_list_add(files, file);
+    if(file->size == 0)
+      ocdata_free_file(file);
+    else
+      ocutils_list_add(files, file);
     debug("Add: %s with a size of %ld bytes",file->path,file->size);
   }
   closedir(curdir);
@@ -365,6 +369,21 @@ int main (int argc, char *argv[])
   }
   check(files->items > 0, "No Files found at \"%s\"",directoryPath);
 
+  List*            jobs;
+  ocworkerContext* workerctx = NULL;
+  ocworker_start(worker,&workerctx);
+  check(workerctx!=NULL,"worker context should not be NULL");
+
+  ocutils_list_foreach_f(files, curfile)
+  {
+    ocworker_schedule_jobs(workerctx, curfile->value,
+      codecList, &jobs);
+  }
+
+  while (true) {
+    struct timespec sleeptimer = {0,100000};
+    nanosleep(&sleeptimer,NULL);
+  }
 
   ocdataContext* myctx;
   ocdataFile* testfile  = ocutils_list_get(files,0);
@@ -381,10 +400,6 @@ int main (int argc, char *argv[])
 
   ocdata_create_context(&myctx,databasePath,0);
 
-  ocutils_list_foreach_f(files, file)
-  {
-    ocdata_add_file(myctx, (ocdataFile*)file->value);
-  }
   ocdata_add_result(myctx,&res);
 
   compressionTest(testfile->path);
