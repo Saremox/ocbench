@@ -82,8 +82,11 @@ error:
 
 void* ocutils_list_rempos (List* list, int64_t position)
 {
-  check(position <= ocutils_list_size(list),
-    "invalid position. greater than size of list");
+  if(position >= ocutils_list_size(list))
+  {
+    log_warn("invalid position. greater than size of list");
+    return NULL;
+  }
   void* val;
   if(position == list->items)
   {
