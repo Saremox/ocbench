@@ -89,15 +89,21 @@ void* ocutils_list_rempos (List* list, int64_t position)
   {
     val = list->tail->value;
     list->tail = list->tail->prev;
-    free(list->tail->next);
-    list->tail->next = NULL;
+    if(list->tail != NULL && list->tail->next !=NULL)
+    {
+      free(list->tail->next);
+      list->tail->next = NULL;
+    }
   }
   else if(position == 0)
   {
     val = list->head->value;
     list->head = list->head->next;
-    free(list->head->prev);
-    list->head->prev = NULL;
+    if (list->head != NULL && list->head->prev !=NULL)
+    {
+      free(list->head->prev);
+      list->head->prev = NULL;
+    }
   }
   else
   {
