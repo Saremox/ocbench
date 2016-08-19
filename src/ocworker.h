@@ -17,6 +17,7 @@ struct __ocworkerContext{
   int64_t         lastjobid;
   int32_t         alive;
   List*           jobs;
+  List*           jobsDone;
   List*           worker;
   pthread_mutex_t lock;
   ocdataFile*     loadedfile;
