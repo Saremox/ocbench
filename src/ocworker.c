@@ -6,6 +6,8 @@
 #include "ocsched/ocsched.h"
 #include "ocutils/list.h"
 
+#define MINIMUM_RUN_TIME 1000*1000
+
 char* ocworker_serialize_job(ocworkerJob* job)
 {
   char* fmt_str  = "BEGIN;%ld;%ld;%s;%ld;%ld;END";
@@ -100,14 +102,32 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
         squash_codec_get_max_compressed_size(codec,decompressed->size));
       recvjob->result->compressed_size = compressed->size;
 
-      int ret = squash_codec_compress(codec,
-                                      &recvjob->result->compressed_size,
-                                      compressed->buf,
-                                      decompressed->size,
-                                      decompressed->buf,
-                                      NULL);
-      check(ret == SQUASH_OK,"failed to compress data [%d] : %s",
-        ret,squash_status_to_string(ret));
+      recvjob->result->time_needed = 0;
+      int iterations = 0;
+
+      for ( ; recvjob->result->time_needed < MINIMUM_RUN_TIME; iterations++) {
+        struct timespec begin,end;
+
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&begin);
+        int ret = squash_codec_compress(codec,
+                                        &recvjob->result->compressed_size,
+                                        compressed->buf,
+                                        decompressed->size,
+                                        decompressed->buf,
+                                        NULL);
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
+
+        int64_t secs = end.tv_sec - begin.tv_sec;
+        int64_t usecs = end.tv_nsec - begin.tv_nsec;
+
+        recvjob->result->time_needed += secs*1000*1000 + usecs/1000;
+
+        check(ret == SQUASH_OK,"failed to compress data [%d] : %s",
+          ret,squash_status_to_string(ret));
+      }
+
+      recvjob->result->time_needed /= iterations;
+
       char* sendbuf = ocworker_serialize_job(recvjob);
       ocsched_printf(ctx, sendbuf);
       debug("Send \"%s\" from %d",sendbuf,ctx->pid);
