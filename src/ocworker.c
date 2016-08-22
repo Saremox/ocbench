@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <time.h>
+#include <wait.h>
 #include "ocworker.h"
 #include "debug.h"
 #include "ocsched/ocsched.h"
@@ -129,6 +130,10 @@ void* ocworker_worker_watchdog_loop(void* data)
   ocworkerWatchdog* wdctx  = (ocworkerWatchdog*) data;
   ocworker*         worker = wdctx->myworker;
 
+  worker->ctx =
+    ocsched_fork_process( ocworker_worker_process_loop,"worker",
+                          wdctx->ctx->memfd);
+
   char*  name_fmt = "Watchdog[%d]";
   size_t namesize = snprintf(NULL,0,name_fmt,worker->ctx->pid)+1;
   char*  name     = malloc(namesize);
@@ -138,9 +143,26 @@ void* ocworker_worker_watchdog_loop(void* data)
 
   pthread_setname_np(pthread_self(),name);
   while (true) {
-    struct timespec sleeptimer = {0,25000000};
-    nanosleep(&sleeptimer,NULL);
-    if (worker->next_job != NULL && worker->cur_job == NULL &&
+    // Watchdog
+    int child_status = 0;
+    waitpid(worker->ctx->pid,&child_status,WNOHANG);
+
+    if(WIFSIGNALED(child_status))
+    {
+      log_warn("Watchdog[%d] CHILD HUNG: %d CODEC: %s JOBID: %d",
+        worker->ctx->pid,
+        WTERMSIG(child_status),
+        worker->cur_job->result->comp_id->codec_id->name,
+        worker->cur_job->jobid);
+      // Try to reanimate child
+      worker->next_job = worker->cur_job;
+      worker->cur_job  = NULL;
+      worker->ctx =
+        ocsched_fork_process( ocworker_worker_process_loop,"worker",
+                              wdctx->ctx->memfd);
+    }
+    // Job transfer
+    if (worker->cur_job == NULL && worker->next_job != NULL &&
         wdctx->ctx->loadedfile == worker->next_job->result->file_id) {
       debug("%s: Next Job is File \"%s\" with \"%s\" as codec",
         name,
@@ -153,8 +175,7 @@ void* ocworker_worker_watchdog_loop(void* data)
       debug("Send \"%s\" to %d",sendbuf,worker->ctx->pid);
       free(sendbuf);
     }
-
-    if(worker->cur_job != NULL)
+    else if(worker->cur_job != NULL)
     {
       memset(recvBuf, 0, 4096);
       if(ocsched_recvfrom(worker->ctx, recvBuf, 4096) > 0)
@@ -164,9 +185,20 @@ void* ocworker_worker_watchdog_loop(void* data)
         worker->last_job = worker->cur_job;
         worker->cur_job = NULL;
       }
+      else
+      {
+        struct timespec sleeptimer = {0,25000000};
+        nanosleep(&sleeptimer,NULL);
+      }
+    }
+    else if(worker->next_job == NULL)
+    {
+      struct timespec sleeptimer = {0,25000000};
+      nanosleep(&sleeptimer,NULL);
     }
   }
 }
+
 
 void* ocworker_schedule_worker(void* data)
 {
