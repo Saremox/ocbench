@@ -27,13 +27,7 @@ struct __ocworkerContext{
 
 struct __ocworkerJob{
   int64_t         jobid;
-  ocdataFile*     file;
-  ocdataCodec*    codec;
-  List*           codecOptions;
-  size_t          compressed;
-  int64_t         time_needed;
-  int16_t         refcount;
-  pthread_mutex_t lock;
+  ocdataResult*   result;
 };
 
 struct __ocworker{
