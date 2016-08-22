@@ -5,6 +5,24 @@
 #include "ocdata.h"
 #include "debug.h"
 
+// Pointer lists
+
+List __files         = {0,0,0,(ocutilsListFreeFunction)ocdata_free_file};
+List __plugins       = {0,0,0,(ocutilsListFreeFunction)ocdata_free_plugin};
+List __codecs        = {0,0,0,(ocutilsListFreeFunction)ocdata_free_codec};
+List __options       = {0,0,0,NULL};
+List __comp_options  = {0,0,0,(ocutilsListFreeFunction)ocdata_free_comp_option};
+List __comp          = {0,0,0,(ocutilsListFreeFunction)ocdata_free_comp};
+List __results       = {0,0,0,(ocutilsListFreeFunction)ocdata_free_result};
+
+static List* files         = &__files;
+static List* plugins       = &__plugins;
+static List* codecs        = &__codecs;
+static List* options       = &__options;
+static List* comp_options  = &__comp_options;
+static List* comp          = &__comp;
+static List* results       = &__results;
+
 #define RESET_STATEMENT(db, stmt, ret) ret = sqlite3_reset(stmt); \
 check(ret == SQLITE_OK,"cannot reset prepared statement: %s", \
   sqlite3_errmsg(db)); \
@@ -193,13 +211,15 @@ error:
 
 void ocdata_free_file         (ocdataFile*              file)
 {
-  free(file->path);
+  if(file->path != NULL)
+    free(file->path);
   free(file);
 }
 
 void ocdata_free_plugin       (ocdataPlugin*            plugin)
 {
-  free(plugin->name);
+  if(plugin->name != NULL)
+    free(plugin->name);
   free(plugin);
 }
 
@@ -210,7 +230,8 @@ void ocdata_free_comp_option  (ocdataCompressionOption* comp_option)
 
 void ocdata_free_codec        (ocdataCodec*             codec)
 {
-  free(codec->name);
+  if(codec->name != NULL)
+    free(codec->name);
   free(codec);
 }
 
@@ -222,6 +243,104 @@ void ocdata_free_comp         (ocdataCompresion*        comp)
 void ocdata_free_result       (ocdataResult*            result)
 {
   free(result);
+}
+
+ocdataFile*
+ocdata_new_file(int64_t id, const char* path, size_t size)
+{
+  ocdataFile* tmp = malloc(sizeof(ocdataFile));
+  tmp->file_id    = id;
+  tmp->size       = size;
+  if (path == NULL)
+  {
+    tmp->path       = NULL;
+  }
+  else
+  {
+    tmp->path       = malloc(strlen(path)+1);
+                      strcpy(tmp->path,path);
+  }
+
+  ocutils_list_add(files,tmp);
+
+  return tmp;
+}
+
+ocdataPlugin*
+ocdata_new_plugin(int64_t id, const char* name)
+{
+  ocdataPlugin* tmp = malloc(sizeof(ocdataPlugin));
+  tmp->plugin_id    = id;
+  if (name == NULL)
+  {
+    tmp->name       = NULL;
+  }
+  else
+  {
+    tmp->name         = malloc(strlen(name)+1);
+                        strcpy(tmp->name,name);
+  }
+
+  ocutils_list_add(plugins,tmp);
+
+  return tmp;
+}
+
+ocdataCodec*
+ocdata_new_codec(int64_t id, ocdataPlugin* plugin, const char* name)
+{
+  ocdataCodec*   tmp = malloc(sizeof(ocdataCodec));
+  tmp->codec_id      = id;
+  tmp->plugin_id     = plugin;
+  if (name == NULL)
+  {
+    tmp->name       = NULL;
+  }
+  else
+  {
+    tmp->name          = malloc(strlen(name)+1);
+                         strcpy(tmp->name,name);
+  }
+
+  ocutils_list_add(codecs,tmp);
+
+  return tmp;
+}
+
+ocdataCompressionOption*
+ocdata_new_comp_option(ocdataCompresion* comp, const char* option_name,
+  const char* option_value
+)
+{
+
+}
+
+ocdataCompresion*
+ocdata_new_comp(int64_t id, ocdataCodec* codec_id, List* options)
+{
+  ocdataCompresion* tmp = malloc(sizeof(ocdataCompresion));
+  tmp->comp_id  = id;
+  tmp->codec_id = codec_id;
+  tmp->options  = options;
+
+  ocutils_list_add(comp,tmp);
+
+  return tmp;
+}
+
+ocdataResult*
+ocdata_new_result(ocdataCompresion* comp, ocdataFile* file, size_t compressed,
+  int64_t time_needed)
+{
+  ocdataResult* tmp     = malloc(sizeof(ocdataResult));
+  tmp->comp_id          = comp;
+  tmp->file_id          = file;
+  tmp->compressed_size  = compressed;
+  tmp->time_needed      = time_needed;
+
+  ocutils_list_add(results,tmp);
+
+  return tmp;
 }
 
 ocdataStatus
@@ -520,7 +639,7 @@ ocdata_add_result(ocdataContext* ctx, ocdataResult* result)
   sqlite3_bind_int(ctx->result_add, 1, result->comp_id->comp_id);
   sqlite3_bind_int(ctx->result_add, 2, result->file_id->file_id);
   sqlite3_bind_int(ctx->result_add, 3, result->compressed_size);
-  sqlite3_bind_int(ctx->result_add, 4, result->time);
+  sqlite3_bind_int(ctx->result_add, 4, result->time_needed);
   ret = sqlite3_step(ctx->result_add);
 
   // TODO what happens if data set allready is in db? sqlite3 will complain
@@ -551,7 +670,7 @@ ocdata_get_comp_option(ocdataContext* ctx,ocdataCompressionOption** res,
 }
 
 ocdataStatus
-ocdata_get_comp_options(ocdataContext* ctx, ocdataCompressionOption*** res,
+ocdata_get_comp_options(ocdataContext* ctx, List** options,
   int64_t comp_id)
 {
 
@@ -590,4 +709,16 @@ ocdata_destroy_context(ocdataContext **ctx)
   sqlite3_close((*ctx)->db);
   free((*ctx));
 
+}
+
+ocdataStatus
+ocdata_garbage_collect()
+{
+  ocutils_list_clear(files);
+  ocutils_list_clear(plugins);
+  ocutils_list_clear(codecs);
+  ocutils_list_clear(options);
+  ocutils_list_clear(comp_options);
+  ocutils_list_clear(comp);
+  ocutils_list_clear(results);
 }

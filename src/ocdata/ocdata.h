@@ -72,7 +72,7 @@ struct __ocdataResult{
   ocdataCompresion* comp_id;
   ocdataFile*       file_id;
   size_t            compressed_size;
-  int64_t           time;
+  int64_t           time_needed;
 };
 
 typedef enum {
@@ -102,10 +102,52 @@ ocdata_get_id(
 
 void ocdata_free_file         (ocdataFile*              file);
 void ocdata_free_plugin       (ocdataPlugin*            plugin);
-void ocdata_free_comp_option  (ocdataCompressionOption* comp_option);
 void ocdata_free_codec        (ocdataCodec*             codec);
+void ocdata_free_comp_option  (ocdataCompressionOption* comp_option);
 void ocdata_free_comp         (ocdataCompresion*        comp);
 void ocdata_free_result       (ocdataResult*            result);
+
+ocdataFile*
+ocdata_new_file(
+  int64_t id,
+  const char* path,
+  size_t size
+);
+
+ocdataPlugin*
+ocdata_new_plugin(
+  int64_t id,
+  const char* name
+);
+
+ocdataCodec*
+ocdata_new_codec(
+  int64_t id,
+  ocdataPlugin* plugin,
+  const char* name
+);
+
+ocdataCompressionOption*
+ocdata_new_comp_option(
+  ocdataCompresion* comp,
+  const char* option_name,
+  const char* option_value
+);
+
+ocdataCompresion*
+ocdata_new_comp(
+  int64_t id,
+  ocdataCodec* codec_id,
+  List* options
+);
+
+ocdataResult*
+ocdata_new_result(
+  ocdataCompresion* comp,
+  ocdataFile* file,
+  size_t compressed,
+  int64_t time_needed
+);
 
 ocdataStatus
 ocdata_add_file(
@@ -174,7 +216,7 @@ ocdata_get_comp_option(
 ocdataStatus
 ocdata_get_comp_options(
   ocdataContext* ctx,
-  ocdataCompressionOption*** res,
+  List** options,
   int64_t comp_id
 );
 
@@ -204,5 +246,9 @@ ocdataStatus
 ocdata_destroy_context(
   ocdataContext **ctx
 );
+
+
+ocdataStatus
+ocdata_garbage_collect();
 
 #endif
