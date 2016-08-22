@@ -14,6 +14,12 @@ void    ocutils_list_freefp (List* list, ocutilsListFreeFunction fp)
 
 void  ocutils_list_destroy(List* list)
 {
+  ocutils_list_clear(list);
+  free(list);
+}
+
+void ocutils_list_clear  (List* list)
+{
   ocutils_list_foreach_f(list, cur)
   {
     if(cur->prev)
@@ -29,7 +35,10 @@ void  ocutils_list_destroy(List* list)
       list->cleanup(ocutils_list_tail(list)->value);
     free(ocutils_list_tail(list));
   }
-  free(list);
+
+  list->tail = NULL;
+  list->head = NULL;
+  list->items = 0;
 }
 
 void  ocutils_list_remptr (List* list, void* val)

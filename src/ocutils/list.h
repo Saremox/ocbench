@@ -30,6 +30,7 @@ struct __ListNode {
 
 List*   ocutils_list_create (void);
 void    ocutils_list_freefp (List* list, ocutilsListFreeFunction fp);
+void    ocutils_list_clear  (List* list);
 void    ocutils_list_destroy(List* list);
 void    ocutils_list_remptr (List* list, void* val);
 void    ocutils_list_addpos (List* list, void* val, int64_t position);
