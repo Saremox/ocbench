@@ -126,6 +126,9 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
           ret,squash_status_to_string(ret));
       }
 
+      // Early resource freeing
+      ocmemfd_resize(compressed, 1024);
+
       recvjob->result->time_needed /= iterations;
 
       char* sendbuf = ocworker_serialize_job(recvjob);
