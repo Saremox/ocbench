@@ -54,13 +54,14 @@ void print_help(char* programname)
 void print_version(char* programname)
 {
 printf(
-"%s openCompressBench Version %d.%d\n"
+"%s openCompressBench Version %d.%d.%d+%s@%s\n"
 "Copyright (C) 2016 Michael Strassberger "
 "<saremox@linux.com>\n"
 "openCompressBench comes with ABSOLUTELY NO WARRANTY.\n"
 "This is free software, and you are welcome\n"
 "to redistribute it under certain conditions;\n",
-programname,OCBENCH_VERSION_MAJOR,OCBENCH_VERSION_MINOR);
+programname,OCBENCH_VERSION_MAJOR,OCBENCH_VERSION_MINOR,OCBENCH_VERSION_PATCH,
+GIT_BRANCH,GIT_COMMIT_HASH);
 }
 
 off_t file_size(const char *filename) {
