@@ -294,8 +294,6 @@ ocworker_start(int worker_amt, ocworkerContext** ctx)
     ocworker*         newworker = calloc(1,sizeof(ocworker));
     wdctx->ctx      = myctx;
     wdctx->myworker = newworker;
-    newworker->ctx  =
-      ocsched_fork_process(ocworker_worker_process_loop,"worker",myctx->memfd);
     ocutils_list_add(myctx->worker, newworker);
     pthread_create(&newworker->watchdog, NULL,
       ocworker_worker_watchdog_loop, wdctx);
