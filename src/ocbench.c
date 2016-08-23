@@ -21,7 +21,7 @@ char* databasePath    = "ocbench.sqlite";
 char* directoryPath   = "./";
 char* codecs          = "bzip2:bzip2,lzma:xz,zlib:gzip";
 int   worker          = 1;
-int   verbosityLevel  = OCDEBUG_ERROR;
+int   verbosityLevel  = OCDEBUG_WARN;
 
 void print_help(char* programname)
 {
@@ -39,8 +39,9 @@ void print_help(char* programname)
 "  -w, --Worker     INT ammount of worker processes.\n"
 "                   Default: 1\n\n"
 "  -v, --verbose    more verbosity equals --log-level=2\n"
+"  -q  --quiet      log only errors equals --log-level=0\n"
 "  -l, --log-level  INT 0 LOG_ERR\n"
-"                       1 LOG_WARN\n"
+"                       1 LOG_WARN DEFAULT\n"
 "                       2 LOG_INFO\n"
 "                       3 LOG_DEBUG\n"
 "  -h, --help       Print this page\n"
@@ -200,6 +201,7 @@ void parse_arguments(int argc, char *argv[])
         {"worker",    required_argument, 0, 'w'},
         {"directory", required_argument, 0, 'd'},
         {"verbose",   no_argument,       0, 'v'},
+        {"quiet",     no_argument,       0, 'q'},
         {"log-level", required_argument, 0, 'l'},
         {"help",      no_argument,       0, 'h'},
         {"usage",     no_argument,       0, 'u'},
@@ -207,7 +209,7 @@ void parse_arguments(int argc, char *argv[])
         {0,           0,                 0,  0 }
     };
 
-    c = getopt_long(argc, argv, "c:D:w:vd:huVl:",
+    c = getopt_long(argc, argv, "c:D:w:vqd:huVl:",
              long_options, &option_index);
     if (c == -1)
       break;
@@ -225,6 +227,10 @@ void parse_arguments(int argc, char *argv[])
       debug("Setting Worker count to: \"%s\"",optarg);
       worker = atoi(optarg);
       check(worker > 0, "Worker count must be greater than 0");
+      break;
+    case 'q':
+      debug("Turn on quiet");
+      verbosityLevel = OCDEBUG_ERROR;
       break;
     case 'v':
       debug("Turn on Verbosity");
