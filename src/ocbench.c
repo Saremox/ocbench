@@ -15,8 +15,6 @@
 #include <squash/squash.h>
 
 
-#define MAX_MEMFD_BUF 1024
-
 // options
 
 char* databasePath    = "ocbench.sqlite";
@@ -296,28 +294,12 @@ int main (int argc, char *argv[])
   }
 
   ocdataContext* myctx;
-  ocdataFile* testfile  = ocutils_list_get(files,0);
-  ocdataPlugin bzip2p   = {-1,"bzip2"};
-  ocdataCodec bzip2     = {-1,&bzip2p ,"bzip2"};
-  ocdataOption level    = {-1,"Level"};
-  ocdataOption dictsize = {-1,"Dict Size"};
-  ocdataCompresion comp = {-1,&bzip2,ocutils_list_create()};
-  ocdataCompressionOption levelbzip2 = {&comp,&level,"7"};
-  ocdataCompressionOption dictsizebzip2 = {&comp,&dictsize,"128"};
-  ocdataResult            res = {&comp,testfile,2500,2500};
-  ocutils_list_push(comp.options,&levelbzip2);
-  ocutils_list_push(comp.options,&dictsizebzip2);
-
   ocdata_create_context(&myctx,databasePath,0);
 
-  ocdata_add_result(myctx,&res);
-
-  compressionTest(testfile->path);
   ocdata_destroy_context(&myctx);
 
   ocutils_list_destroy(codecList);
   ocutils_list_destroy(files);
-  ocutils_list_destroy(comp.options);
   return EXIT_SUCCESS;
   error:
   return EXIT_FAILURE;
