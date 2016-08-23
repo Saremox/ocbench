@@ -71,9 +71,9 @@ ocworkerStatus ocworker_deserialize_job(ocworkerJob* job, char* serialized_str)
 void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
 {
   char*  name_fmt = "/worker[%d]";
-  size_t namesize = snprintf(NULL,0,name_fmt,ctx->pid)+1;
+  size_t namesize = snprintf(NULL,0,name_fmt,getpid())+1;
   char*  name     = malloc(namesize);
-                    snprintf(name, namesize, name_fmt, ctx->pid);
+                    snprintf(name, namesize, name_fmt, getpid());
 
   ocMemfdContext* decompressed = (ocMemfdContext *) data;
   ocMemfdContext* compressed   = ocmemfd_create_context(name,1024);
