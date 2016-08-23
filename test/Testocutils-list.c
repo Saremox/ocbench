@@ -29,7 +29,7 @@ int TestOcutilsListAdd()
   char* testStr = "I'm a test String";
   ocutils_list_add(testlist,testStr);
   oc_assert_equal_64bit(1, testlist->items);
-  oc_assert_str_equal(testStr, ocutils_list_head(testlist)->value);
+  oc_assert_str_equal(testStr, (char*) ocutils_list_head(testlist)->value);
 
   destroyTestlist();
 }
@@ -76,8 +76,8 @@ int TestOcutilsListQueueDequeueOrder()
   ocutils_list_enqueue(testlist,testStr1);
   ocutils_list_enqueue(testlist,testStr2);
 
-  oc_assert_str_equal(testStr1, ocutils_list_dequeue(testlist));
-  oc_assert_str_equal(testStr2, ocutils_list_dequeue(testlist));
+  oc_assert_str_equal(testStr1, (char*) ocutils_list_dequeue(testlist));
+  oc_assert_str_equal(testStr2, (char*) ocutils_list_dequeue(testlist));
 
   destroyTestlist();
 }
@@ -92,8 +92,8 @@ int TestOcutilsListDequeueMoreThanEnqueued()
   ocutils_list_enqueue(testlist,testStr1);
   ocutils_list_enqueue(testlist,testStr2);
 
-  oc_assert_str_equal(testStr1, ocutils_list_dequeue(testlist));
-  oc_assert_str_equal(testStr2, ocutils_list_dequeue(testlist));
+  oc_assert_str_equal(testStr1, (char*) ocutils_list_dequeue(testlist));
+  oc_assert_str_equal(testStr2, (char*) ocutils_list_dequeue(testlist));
   oc_assert_equal_64bit(NULL, ocutils_list_dequeue(testlist));
 
   destroyTestlist();
@@ -125,8 +125,8 @@ int TestOcutilsListStackPopOrder()
   ocutils_list_push(testlist,testStr1);
   ocutils_list_push(testlist,testStr2);
 
-  oc_assert_str_equal(testStr2, ocutils_list_pop(testlist));
-  oc_assert_str_equal(testStr1, ocutils_list_pop(testlist));
+  oc_assert_str_equal(testStr2, (char*) ocutils_list_pop(testlist));
+  oc_assert_str_equal(testStr1, (char*) ocutils_list_pop(testlist));
 
   destroyTestlist();
 }
@@ -141,8 +141,8 @@ int TestOcutilsListStackPopMoreThanPushed()
   ocutils_list_push(testlist,testStr1);
   ocutils_list_push(testlist,testStr2);
 
-  oc_assert_str_equal(testStr2, ocutils_list_pop(testlist));
-  oc_assert_str_equal(testStr1, ocutils_list_pop(testlist));
+  oc_assert_str_equal(testStr2, (char*) ocutils_list_pop(testlist));
+  oc_assert_str_equal(testStr1, (char*) ocutils_list_pop(testlist));
   oc_assert_equal_64bit(NULL, ocutils_list_pop(testlist));
 
   destroyTestlist();
