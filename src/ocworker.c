@@ -240,6 +240,17 @@ void* ocworker_schedule_worker(void* data)
       continue;
 
     pthread_mutex_lock(&ctx->lock);
+
+    for (size_t i = 0; i < ctx->worker->items; i++)
+    {
+      ocworker* worker = (ocworker*)    ocutils_list_get(ctx->worker, i);
+      if(worker->last_job != NULL)
+      {
+        ocutils_list_add(ctx->jobsDone, worker->last_job);
+        worker->last_job = NULL;
+      }
+    }
+
     ListNode* job =  ocutils_list_head(ctx->jobs);
     if (job != NULL) {
       // Check if we need to load a new file into our memfd
@@ -273,9 +284,10 @@ ocworker_start(int worker_amt, ocworkerContext** ctx)
 {
   ocworkerContext* myctx = calloc(1,sizeof(ocworkerContext));
 
-  myctx->jobs   = ocutils_list_create();
-  myctx->worker = ocutils_list_create();
-  myctx->memfd  = ocmemfd_create_context("/loadedfile", 1024);
+  myctx->jobs     = ocutils_list_create();
+  myctx->worker   = ocutils_list_create();
+  myctx->jobsDone = ocutils_list_create();
+  myctx->memfd    = ocmemfd_create_context("/loadedfile", 1024);
 
   for (size_t i = 0; i < worker_amt; i++) {
     ocworkerWatchdog* wdctx     = calloc(1, sizeof(ocworkerWatchdog));
