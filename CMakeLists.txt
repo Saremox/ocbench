@@ -29,6 +29,8 @@ INCLUDE (CheckSymbolExists)
 INCLUDE (CheckLibraryExists)
 INCLUDE (CheckTypeSize)
 
+LIST(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+
 find_package(Squash)
 
 set(CMAKE_C_FLAGS_DEBUG "-Og -g -std=c99 -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE")
