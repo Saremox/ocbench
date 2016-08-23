@@ -81,7 +81,7 @@ bool parse_dir(char* path, List* files)
   if(path[strlen(path)-1] != '/')
   {
     char* newpath = malloc(snprintf(0, 0, "%s%s",path,"/")+1);
-    sprintf(newpath, "%s%s\0", path, "/");
+    sprintf(newpath, "%s%s", path, "/");
     path = newpath;
   }
 
@@ -106,9 +106,9 @@ bool parse_dir(char* path, List* files)
     debug("Testing File: %s",currentfile->d_name);
     char* filepath = malloc(snprintf(0, 0, "%s%s",path,
                                      currentfile->d_name)+1);
-    sprintf(filepath,"%s%s\0", path, currentfile->d_name);
+    sprintf(filepath,"%s%s", path, currentfile->d_name);
     char* dircheck = malloc(snprintf(0, 0, "%s%s",filepath,"/")+1);
-    sprintf(dircheck, "%s%s\0", filepath, "/");
+    sprintf(dircheck, "%s%s", filepath, "/");
     if (parse_dir(dircheck, files)) {
       free(filepath);
       free(dircheck);
