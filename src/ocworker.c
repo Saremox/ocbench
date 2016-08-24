@@ -410,6 +410,23 @@ ocworker_unref_job(ocworkerContext* ctx, ocworkerJob** job)
 }
 
 ocworkerStatus
+ocworker_is_running(ocworkerContext* ctx)
+{
+  int ret = OCWORKER_NO_JOBS;
+  pthread_mutex_lock(&ctx->lock);
+  if(ctx->jobs->items > 0)
+    ret = OCWORKER_IS_RUNNING;
+  ocutils_list_foreach_f(ctx->worker, curWorker)
+  {
+    ocworker* worker = (ocworker*) curWorker->value;
+    if(worker->cur_job != NULL)
+      ret = OCWORKER_IS_RUNNING;
+  }
+  pthread_mutex_unlock(&ctx->lock);
+  return ret;
+}
+
+ocworkerStatus
 ocworker_kill(ocworkerContext*  ctx)
 {
   log_info("Shutting down worker");

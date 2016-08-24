@@ -17,14 +17,13 @@ typedef struct __ocworker         ocworker;
 
 struct __ocworkerContext{
   int64_t         lastjobid;
-  int32_t         alive;
   List*           jobs;
   List*           jobsDone;
   List*           worker;
-  pthread_mutex_t lock;
   ocdataFile*     loadedfile;
   ocMemfdContext* memfd;
   pthread_t       scheduler;
+  pthread_mutex_t lock;
 };
 
 struct __ocworkerJob{
@@ -49,6 +48,8 @@ struct __ocworkerWatchdog{
 typedef enum __ocworkerStatus{
   OCWORKER_FAILURE = -1,
   OCWORKER_OK,
+  OCWORKER_IS_RUNNING,
+  OCWORKER_NO_JOBS,
   OCWORKER_SCHEDULED,
   OCWORKER_NOT_EXECUTED,
 } ocworkerStatus;
@@ -94,6 +95,11 @@ ocworkerStatus
 ocworker_unref_job(
   ocworkerContext*  ctx,
   ocworkerJob**     job
+);
+
+ocworkerStatus
+ocworker_is_running(
+  ocworkerContext* ctx
 );
 
 ocworkerStatus
