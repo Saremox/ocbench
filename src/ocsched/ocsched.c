@@ -1,5 +1,6 @@
 #include "ocsched.h"
 #include "debug.h"
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -112,8 +113,11 @@ ocsched_printf(ocschedProcessContext * ctx,char * fmtstr,...)
 size_t
 ocsched_recvfrom(ocschedProcessContext * ctx, char * buf, size_t n)
 {
-  int readed;
-  check((readed = read(ctx->comm.pipe_in,buf,n)) >= 0, " read failed");
+  int readed = 0;
+  struct pollfd pipe = {ctx->comm.pipe_in,POLLIN,0};
+  int ret = poll(&pipe,1,0);
+  if(pipe.revents & POLLIN)
+    check((readed = read(ctx->comm.pipe_in,buf,n)) >= 0, " read failed");
   return readed;
 error:
   return OCSCHED_FAILURE;
