@@ -13,6 +13,8 @@ typedef struct __ocworkerContext  ocworkerContext;
 typedef struct __ocworkerJob      ocworkerJob;
 typedef struct __ocworker         ocworker;
 
+#define OCWORKER_KILL_SIG 42
+
 struct __ocworkerContext{
   int64_t         lastjobid;
   int32_t         alive;
@@ -35,6 +37,7 @@ struct __ocworker{
   ocworkerJob*            next_job;
   ocworkerJob*            cur_job;
   ocworkerJob*            last_job;
+  int64_t                 status;
   pthread_t               watchdog;
 };
 

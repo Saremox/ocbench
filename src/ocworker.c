@@ -8,6 +8,8 @@
 
 #define MINIMUM_RUN_TIME 1000*1000
 
+int got_killed = 0; // Used by worker processes
+
 char* ocworker_serialize_job(ocworkerJob* job)
 {
   char* fmt_str  = "BEGIN;%ld;%ld;%s;%ld;%ld;END";
@@ -68,6 +70,18 @@ ocworkerStatus ocworker_deserialize_job(ocworkerJob* job, char* serialized_str)
   return OCWORKER_OK;
 }
 
+void ocworker_worker_process_signalhandler(int signl)
+{
+  if (signl == SIGINT) {
+    // Ignore since we're wating for a OCWORKER_KILL_SIG
+  }
+  else if(signl == OCWORKER_KILL_SIG)
+  {
+    log_info("Worker[%d] shutting down",getpid());
+    got_killed = 1;
+  }
+}
+
 void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
 {
   char*  name_fmt = "/worker[%d]";
@@ -75,12 +89,18 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
   char*  name     = malloc(namesize);
                     snprintf(name, namesize, name_fmt, getpid());
 
+  signal(SIGINT, ocworker_worker_process_signalhandler);
+  signal(OCWORKER_KILL_SIG, ocworker_worker_process_signalhandler);
+
   ocMemfdContext* decompressed = (ocMemfdContext *) data;
   ocMemfdContext* compressed   = ocmemfd_create_context(name,1024);
 
   char   recvBuf[4096];
 
   while (true) {
+    if(got_killed == 1)
+      break;
+
     memset(recvBuf, 0, 4096);
     int readBytes = ocsched_recvfrom(ctx, recvBuf, 4096);
     if(readBytes > 0)
@@ -146,6 +166,12 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
     error:
       continue;
   }
+killWorker:
+  ocdata_garbage_collect();
+  ocmemfd_destroy_context(&compressed);
+  ocmemfd_destroy_context(&decompressed);
+  free(name);
+  exit(EXIT_SUCCESS);
 }
 
 void* ocworker_worker_watchdog_loop(void* data)
@@ -169,6 +195,15 @@ void* ocworker_worker_watchdog_loop(void* data)
     // Watchdog
     int child_status = 0;
     waitpid(worker->ctx->pid,&child_status,WNOHANG);
+
+    if(worker->status == OCWORKER_KILL_SIG)
+    {
+      log_info("Watchdog[%d] got kill signal",worker->ctx->pid);
+      kill(worker->ctx->pid,OCWORKER_KILL_SIG);
+
+      waitpid(worker->ctx->pid, &child_status, 0);
+      goto killWatchdog;
+    }
 
     if(WIFSIGNALED(child_status))
     {
@@ -220,6 +255,13 @@ void* ocworker_worker_watchdog_loop(void* data)
       nanosleep(&sleeptimer,NULL);
     }
   }
+killWatchdog:
+  ocsched_destroy_context(&worker->ctx);
+
+  free(worker);
+  free(wdctx);
+  free(name);
+  pthread_exit(EXIT_SUCCESS);
 }
 
 
@@ -370,5 +412,13 @@ ocworker_unref_job(ocworkerContext* ctx, ocworkerJob** job)
 ocworkerStatus
 ocworker_kill(ocworkerContext*  ctx)
 {
+  log_info("Shutting down worker");
+  ocutils_list_foreach_f(ctx->worker, curWorker)
+  {
+    ocworker* worker = (ocworker*) curWorker->value;
+    worker->status = OCWORKER_KILL_SIG;
 
+    pthread_join(worker->watchdog, NULL);
+  }
+  pthread_cancel(ctx->scheduler);
 }
