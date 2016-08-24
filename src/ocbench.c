@@ -295,10 +295,12 @@ int main (int argc, char *argv[])
       codecList, &jobs);
   }
 
-  while (true) {
-    struct timespec sleeptimer = {0,100000};
+  while (ocworker_is_running(workerctx) == OCWORKER_IS_RUNNING) {
+    struct timespec sleeptimer = {0,250*1000*1000};
     nanosleep(&sleeptimer,NULL);
   }
+
+  ocworker_kill(workerctx);
 
   ocdataContext* myctx;
   ocdata_create_context(&myctx,databasePath,0);
