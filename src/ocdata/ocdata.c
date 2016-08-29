@@ -312,7 +312,15 @@ ocdata_new_comp_option(ocdataCompresion* comp, const char* option_name,
   const char* option_value
 )
 {
-
+  ocdataCompressionOption* tmp = malloc(sizeof(ocdataCompressionOption));
+  tmp->comp_id              = comp;
+  tmp->value                = malloc(strlen(option_value)+1);
+                              strcpy(tmp->value,option_value);
+  tmp->option_id            = malloc(sizeof(ocdataOption));
+  tmp->option_id->name      = malloc(strlen(option_name)+1);
+                              strcpy(tmp->option_id->name, option_name);
+  tmp->option_id->option_id = -1;
+  return tmp;
 }
 
 ocdataCompresion*
