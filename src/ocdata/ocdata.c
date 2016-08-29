@@ -650,6 +650,8 @@ ocdata_add_result(ocdataContext* ctx, ocdataResult* result)
   sqlite3_bind_int(ctx->result_add, 4, result->time_needed);
   ret = sqlite3_step(ctx->result_add);
 
+  RESET_STATEMENT(ctx->db, ctx->result_add, ret);
+
   // TODO what happens if data set allready is in db? sqlite3 will complain
   // of unmet constraints since comp_id and file_id are the PRIMARY KEY
 
