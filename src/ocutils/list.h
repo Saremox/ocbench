@@ -54,16 +54,16 @@ void    ocutils_list_sort   (List* list, ocutilsListSortFunction);
 #define ocutils_list_dequeue(LIST) \
   ocutils_list_rempos(LIST,0)
 
-#define ocutils_list_foreach_f(LIST, ITERATOR) ListNode* _node = NULL;\
+#define ocutils_list_foreach_f(LIST, ITERATOR) ListNode* ITERATOR ## _node = NULL;\
   ListNode* ITERATOR = NULL;\
-  for(ITERATOR = _node = LIST->head;\
-      _node != NULL;\
-      ITERATOR = _node = _node->next)
+  for(ITERATOR = ITERATOR ## _node = LIST->head;\
+      ITERATOR ## _node != NULL;\
+      ITERATOR = ITERATOR ## _node = ITERATOR ## _node->next)
 
-#define ocutils_list_foreach_b(LIST, ITERATOR) ListNode* _node = NULL;\
+#define ocutils_list_foreach_b(LIST, ITERATOR) ListNode* ITERATOR ## _node = NULL;\
   ListNode* ITERATOR = NULL;\
-  for(ITERATOR = _node = LIST->tail;\
-      _node != NULL;\
-      ITERATOR = _node = _node->prev)
+  for(ITERATOR = ITERATOR ## _node = LIST->tail;\
+      ITERATOR_node != NULL;\
+      ITERATOR = ITERATOR ## _node = ITERATOR_node->prev)
 
 #endif
