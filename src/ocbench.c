@@ -145,9 +145,9 @@ void parse_codecs(char* codecstring, List* codecList)
     curptr = strtok(NULL, ",");
   }
 
-  ocutils_list_foreach_f(pluginstrings, pluginstring)
+  ocutils_list_foreach_f(pluginstrings, pluginstring, char*)
   {
-    char* pluginname = strtok((char*) pluginstring->value, ":");
+    char* pluginname = strtok(pluginstring, ":");
     ocdataPlugin* tmpPlugin = malloc(sizeof(ocdataPlugin));
     tmpPlugin->name       = malloc(strlen(pluginname)+1);
                             memcpy(tmpPlugin->name,pluginname,
@@ -275,11 +275,11 @@ int main (int argc, char *argv[])
   parse_codecs(codecs,codecList);
   if(verbosityLevel == OCDEBUG_DEBUG)
   {
-    ocutils_list_foreach_f(codecList, curCodec)
+    ocutils_list_foreach_f(codecList, curCodec, ocdataCodec*)
     {
       debug("Plugin: %8s with Codec: %8s",
-        ((ocdataCodec*)curCodec->value)->plugin_id->name,
-        ((ocdataCodec*)curCodec->value)->name);
+        curCodec->plugin_id->name,
+        curCodec->name);
     }
   }
   check(files->items > 0, "No Files found at \"%s\"",directoryPath);
@@ -289,9 +289,9 @@ int main (int argc, char *argv[])
   ocworker_start(worker,&workerctx);
   check(workerctx!=NULL,"worker context should not be NULL");
 
-  ocutils_list_foreach_f(files, curfile)
+  ocutils_list_foreach_f(files, curfile, ocdataFile*)
   {
-    ocworker_schedule_jobs(workerctx, curfile->value,
+    ocworker_schedule_jobs(workerctx, curfile,
       codecList, &jobs);
   }
 

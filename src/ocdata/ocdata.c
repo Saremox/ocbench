@@ -502,9 +502,9 @@ error:
 ocdataStatus
 ocdata_add_comp_options(ocdataContext* ctx, List* options)
 {
-  ocutils_list_foreach_f(options, cur)
+  ocutils_list_foreach_f(options, cur, ocdataCompressionOption*)
   {
-    ocdata_add_comp_option(ctx,cur->value);
+    ocdata_add_comp_option(ctx,cur);
   }
 }
 
@@ -551,9 +551,8 @@ ocdata_get_comp_id(ocdataContext* ctx, ocdataCompresion* compression)
                               "  ORDER BY foundops DESC;";
   char *        fmtAnd    =   "(OP_value = \"%s\" AND OP_name = \"%s\")";
   char *        optSearch =   calloc(1,1);
-  ocutils_list_foreach_f(compression->options, cur)
+  ocutils_list_foreach_f(compression->options, curOp, ocdataCompressionOption*)
   {
-    ocdataCompressionOption* curOp = (ocdataCompressionOption*) cur->value;
     size_t tmpsize = snprintf(NULL,0,fmtAnd,curOp->value,curOp->option_id->name);
     char*  tmpstr  = calloc(tmpsize+1,1);
     sprintf(tmpstr,fmtAnd,curOp->value,curOp->option_id->name);
@@ -564,7 +563,7 @@ ocdata_get_comp_id(ocdataContext* ctx, ocdataCompresion* compression)
         exit(EXIT_FAILURE);
     }
     strcat(ret,tmpstr);
-    if(cur->next > 0)
+    if(curOp_node->next > 0)
     {
       strcat(ret," OR ");
     }
@@ -618,9 +617,9 @@ ocdata_add_comp(ocdataContext* ctx, ocdataCompresion* compression)
   compression->comp_id = sqlite3_last_insert_rowid(ctx->db);
   RESET_STATEMENT(ctx->db, ctx->compression_add, ret);
 
-  ocutils_list_foreach_f(compression->options, cur)
+  ocutils_list_foreach_f(compression->options, cur, ocdataCompressionOption*)
   {
-    ((ocdataCompressionOption*) cur->value)->comp_id = compression;
+    cur->comp_id = compression;
   }
 
   // Insert options into database

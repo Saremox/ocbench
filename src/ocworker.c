@@ -276,9 +276,9 @@ void* ocworker_schedule_worker(void* data)
     nanosleep(&sleeptimer,NULL);
 
     int running_jobs = 0;
-    ocutils_list_foreach_f(ctx->worker, curworker)
+    ocutils_list_foreach_f(ctx->worker, curworker, ocworker*)
     {
-      if (((ocworker*)curworker->value)->cur_job != NULL)
+      if (curworker->cur_job != NULL)
         running_jobs++;
     }
     if(running_jobs != 0)
@@ -378,11 +378,10 @@ ocworker_schedule_jobs(ocworkerContext* ctx, ocdataFile* file,
   List* codecs, List** jobids)
 {
   List* jobs = ocutils_list_create();
-  ocutils_list_foreach_f(codecs, codec)
+  ocutils_list_foreach_f(codecs, codec, ocdataCodec*)
   {
     int64_t jobid;
-    ocdataCodec* curcodec = (ocdataCodec*) codec->value;
-    ocworker_schedule_job(ctx, file, curcodec, &jobid);
+    ocworker_schedule_job(ctx, file, codec, &jobid);
     ocutils_list_add(jobs, (void*) jobid);
   }
 
@@ -416,9 +415,8 @@ ocworker_is_running(ocworkerContext* ctx)
   pthread_mutex_lock(&ctx->lock);
   if(ctx->jobs->items > 0)
     ret = OCWORKER_IS_RUNNING;
-  ocutils_list_foreach_f(ctx->worker, curWorker)
+  ocutils_list_foreach_f(ctx->worker, worker, ocworker*)
   {
-    ocworker* worker = (ocworker*) curWorker->value;
     if(worker->cur_job != NULL)
       ret = OCWORKER_IS_RUNNING;
   }
@@ -430,9 +428,8 @@ ocworkerStatus
 ocworker_kill(ocworkerContext*  ctx)
 {
   log_info("Shutting down worker");
-  ocutils_list_foreach_f(ctx->worker, curWorker)
+  ocutils_list_foreach_f(ctx->worker, worker, ocworker*)
   {
-    ocworker* worker = (ocworker*) curWorker->value;
     worker->status = OCWORKER_KILL_SIG;
 
     pthread_join(worker->watchdog, NULL);

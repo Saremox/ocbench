@@ -20,7 +20,7 @@ void  ocutils_list_destroy(List* list)
 
 void ocutils_list_clear  (List* list)
 {
-  ocutils_list_foreach_f(list, cur)
+  ocutils_list_foreach_fraw(list, cur)
   {
     if(cur->prev)
     {

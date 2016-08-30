@@ -54,13 +54,33 @@ void    ocutils_list_sort   (List* list, ocutilsListSortFunction);
 #define ocutils_list_dequeue(LIST) \
   ocutils_list_rempos(LIST,0)
 
-#define ocutils_list_foreach_f(LIST, ITERATOR) ListNode* ITERATOR ## _node = NULL;\
+#define ocutils_list_foreach_f(LIST, ITERATOR, TYPE)\
+  ListNode* ITERATOR ## _node = NULL;\
+  TYPE ITERATOR = NULL;\
+  for(ITERATOR ## _node = LIST->head,\
+        ITERATOR = ITERATOR ## _node == NULL ? 0 : ITERATOR ## _node->value;\
+      ITERATOR ## _node != NULL;\
+      ITERATOR ## _node = ITERATOR ## _node->next,\
+        ITERATOR = ITERATOR ## _node == NULL ? 0 : ITERATOR ## _node->value)
+
+#define ocutils_list_foreach_fraw(LIST, ITERATOR)\
+  ListNode* ITERATOR ## _node = NULL;\
   ListNode* ITERATOR = NULL;\
   for(ITERATOR = ITERATOR ## _node = LIST->head;\
       ITERATOR ## _node != NULL;\
       ITERATOR = ITERATOR ## _node = ITERATOR ## _node->next)
 
-#define ocutils_list_foreach_b(LIST, ITERATOR) ListNode* ITERATOR ## _node = NULL;\
+#define ocutils_list_foreach_b(LIST, ITERATOR, TYPE)\
+  ListNode* ITERATOR ## _node = NULL;\
+  TYPE ITERATOR = NULL;\
+  for(ITERATOR ## _node = LIST->tail;\
+        ITERATOR = ITERATOR ## _node == NULL ? 0 : ITERATOR ## _node->value;\
+      ITERATOR_node != NULL;\
+      ITERATOR ## _node = ITERATOR ## _node->prev,\
+        ITERATOR = ITERATOR ## _node == NULL ? 0 : ITERATOR ## _node->value)
+
+#define ocutils_list_foreach_braw(LIST, ITERATOR)\
+  ListNode* ITERATOR ## _node = NULL;\
   ListNode* ITERATOR = NULL;\
   for(ITERATOR = ITERATOR ## _node = LIST->tail;\
       ITERATOR_node != NULL;\
