@@ -506,6 +506,7 @@ ocdata_add_comp_options(ocdataContext* ctx, List* options)
   {
     ocdata_add_comp_option(ctx,cur);
   }
+  return OCDATA_SUCCESS;
 }
 
 ocdataStatus
@@ -593,14 +594,11 @@ ocdata_get_comp_id(ocdataContext* ctx, ocdataCompresion* compression)
   sqlite3_finalize(querry);
 
   return OCDATA_SUCCESS;
-error:
-  return OCDATA_FAILURE;
 }
 
 ocdataStatus
 ocdata_add_comp(ocdataContext* ctx, ocdataCompresion* compression)
 {
-  sqlite3_stmt* querry;
   int ret = SQLITE_OK;
   check(compression > 0, "invalid compression pointer");
   check(compression->codec_id > 0, "invalid codec pointer");
@@ -662,46 +660,46 @@ error:
 ocdataStatus
 ocdata_get_file(ocdataContext* ctx, ocdataFile** res, int64_t file_id)
 {
-
+  return OCDATA_SUCCESS;
 }
 
 ocdataStatus
 ocdata_get_plugin(ocdataContext* ctx, ocdataPlugin** res, int64_t plugin_id)
 {
-
+  return OCDATA_SUCCESS;
 }
 
 ocdataStatus
 ocdata_get_comp_option(ocdataContext* ctx,ocdataCompressionOption** res,
   int64_t comp_id,int64_t option_id)
 {
-
+  return OCDATA_SUCCESS;
 }
 
 ocdataStatus
 ocdata_get_comp_options(ocdataContext* ctx, List** options,
   int64_t comp_id)
 {
-
+  return OCDATA_SUCCESS;
 }
 
 ocdataStatus
 ocdata_get_codec(ocdataContext* ctx, ocdataCodec** res, int64_t codec_id)
 {
-
+  return OCDATA_SUCCESS;
 }
 
 ocdataStatus
 ocdata_get_comp(ocdataContext* ctx, ocdataCompresion** res, int64_t comp_id)
 {
-
+  return OCDATA_SUCCESS;
 }
 
 ocdataStatus
 ocdata_get_result(ocdataContext* ctx, ocdataResult** res,
   int64_t file_id, int64_t comp_id)
 {
-
+  return OCDATA_SUCCESS;
 }
 
 ocdataStatus
@@ -717,7 +715,7 @@ ocdata_destroy_context(ocdataContext **ctx)
 
   sqlite3_close((*ctx)->db);
   free((*ctx));
-
+  return OCDATA_SUCCESS;
 }
 
 ocdataStatus
@@ -730,4 +728,5 @@ ocdata_garbage_collect()
   ocutils_list_clear(comp_options);
   ocutils_list_clear(comp);
   ocutils_list_clear(results);
+  return OCDATA_SUCCESS;
 }

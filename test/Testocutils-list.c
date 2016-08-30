@@ -8,11 +8,15 @@ List* testlist;
 int initTestlist()
 {
   testlist = ocutils_list_create();
+
+  return EXIT_SUCCESS;
 }
 
 int destroyTestlist()
 {
   ocutils_list_destroy(testlist);
+
+  return EXIT_SUCCESS;
 }
 
 int TestOcutilsListNewIsEmpty()
@@ -20,6 +24,8 @@ int TestOcutilsListNewIsEmpty()
   initTestlist();
   oc_assert_equal_64bit(0, ocutils_list_size(testlist));
   destroyTestlist();
+
+  return EXIT_SUCCESS;
 }
 
 int TestOcutilsListAdd()
@@ -32,6 +38,7 @@ int TestOcutilsListAdd()
   oc_assert_str_equal(testStr, (char*) ocutils_list_head(testlist)->value);
 
   destroyTestlist();
+  return EXIT_SUCCESS;
 }
 
 int TestOcutilsListAddOrder()
@@ -48,6 +55,7 @@ int TestOcutilsListAddOrder()
   oc_assert_equal_64bit(1, ocutils_list_getpos(testlist,testStr2));
 
   destroyTestlist();
+  return EXIT_SUCCESS;
 }
 
 int TestOcutilsListQueueEnqueueOrder()
@@ -64,6 +72,7 @@ int TestOcutilsListQueueEnqueueOrder()
   oc_assert_equal_64bit(1, ocutils_list_getpos(testlist,testStr2));
 
   destroyTestlist();
+  return EXIT_SUCCESS;
 }
 
 int TestOcutilsListQueueDequeueOrder()
@@ -80,6 +89,7 @@ int TestOcutilsListQueueDequeueOrder()
   oc_assert_str_equal(testStr2, (char*) ocutils_list_dequeue(testlist));
 
   destroyTestlist();
+  return EXIT_SUCCESS;
 }
 
 int TestOcutilsListDequeueMoreThanEnqueued()
@@ -97,6 +107,7 @@ int TestOcutilsListDequeueMoreThanEnqueued()
   oc_assert_equal_64bit(NULL, ocutils_list_dequeue(testlist));
 
   destroyTestlist();
+  return EXIT_SUCCESS;
 }
 
 int TestOcutilsListStackPushOrder()
@@ -113,6 +124,7 @@ int TestOcutilsListStackPushOrder()
   oc_assert_equal_64bit(0, ocutils_list_getpos(testlist,testStr2));
 
   destroyTestlist();
+  return EXIT_SUCCESS;
 }
 
 int TestOcutilsListStackPopOrder()
@@ -129,6 +141,7 @@ int TestOcutilsListStackPopOrder()
   oc_assert_str_equal(testStr1, (char*) ocutils_list_pop(testlist));
 
   destroyTestlist();
+  return EXIT_SUCCESS;
 }
 
 int TestOcutilsListStackPopMoreThanPushed()
@@ -146,6 +159,7 @@ int TestOcutilsListStackPopMoreThanPushed()
   oc_assert_equal_64bit(NULL, ocutils_list_pop(testlist));
 
   destroyTestlist();
+  return EXIT_SUCCESS;
 }
 
 int RunAllTests()

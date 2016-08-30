@@ -23,7 +23,7 @@ ocsched_get_msgq()
   if(global_job_queue > 0)
     return global_job_queue;
 
-  sprintf(msgQname,"/ocbench-work-queue",getpid());
+  sprintf(msgQname,"/ocbench-work-queue");
   #if defined(O_CLOEXEC)
     #define MQ_FLAGS_USED O_CREAT | O_RDWR | O_CLOEXEC
   #else
@@ -88,6 +88,7 @@ ocsched_fork_process(ocschedFunction work_function, char* childname, void* data)
   {
 error:
     log_err("failed to fork process");
+    return NULL;
   }
 }
 
@@ -108,6 +109,7 @@ ocsched_printf(ocschedProcessContext * ctx,char * fmtstr,...)
   va_start(ap,fmtstr);
   vdprintf(ctx->comm.pipe_out,fmtstr,ap);
   va_end(ap);
+  return OCSCHED_SUCCESS;
 }
 
 size_t
@@ -115,7 +117,7 @@ ocsched_recvfrom(ocschedProcessContext * ctx, char * buf, size_t n)
 {
   int readed = 0;
   struct pollfd pipe = {ctx->comm.pipe_in,POLLIN,0};
-  int ret = poll(&pipe,1,0);
+  poll(&pipe,1,0);
   if(pipe.revents & POLLIN)
     check((readed = read(ctx->comm.pipe_in,buf,n)) >= 0, " read failed");
   return readed;

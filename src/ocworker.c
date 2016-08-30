@@ -169,7 +169,6 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
     error:
       continue;
   }
-killWorker:
   ocdata_garbage_collect();
   ocmemfd_destroy_context(&compressed);
   ocmemfd_destroy_context(&decompressed);
@@ -210,7 +209,7 @@ void* ocworker_worker_watchdog_loop(void* data)
 
     if(WIFSIGNALED(child_status))
     {
-      log_warn("Watchdog[%d] CHILD HUNG: %d CODEC: %s JOBID: %d",
+      log_warn("Watchdog[%d] CHILD HUNG: %d CODEC: %s JOBID: %ld",
         worker->ctx->pid,
         WTERMSIG(child_status),
         worker->cur_job->result->comp_id->codec_id->name,
@@ -399,19 +398,19 @@ ocworker_schedule_jobs(ocworkerContext* ctx, ocdataFile* file,
 ocworkerStatus
 ocworker_retrieve_job(ocworkerContext* ctx, int64_t jobid, ocworkerJob** job)
 {
-
+  return OCWORKER_OK;
 }
 
 ocworkerStatus
 ocworker_retrieve_jobs(ocworkerContext* ctx, List* jobids, List** jobs)
 {
-
+  return OCWORKER_OK;
 }
 
 ocworkerStatus
 ocworker_unref_job(ocworkerContext* ctx, ocworkerJob** job)
 {
-
+  return OCWORKER_OK;
 }
 
 ocworkerStatus
@@ -441,4 +440,5 @@ ocworker_kill(ocworkerContext*  ctx)
     pthread_join(worker->watchdog, NULL);
   }
   pthread_cancel(ctx->scheduler);
+  return OCWORKER_OK;
 }

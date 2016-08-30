@@ -94,7 +94,7 @@ void* ocutils_list_rempos (List* list, int64_t position)
   if(position >= ocutils_list_size(list))
   {
     log_warn("invalid position. greater than size of list");
-    return NULL;
+    goto error;
   }
   void* val;
   if(position == list->items)
@@ -140,13 +140,11 @@ error:
 int64_t ocutils_list_getpos (List* list, void* value)
 {
   int64_t curPos = 0;
-  ListNode* prev = NULL;
   ListNode* next = list->head;
   for(; curPos < list->items; curPos++)
   {
     if(next->value == value)
       break;
-    prev = next;
     next = next->next;
   }
   if(next->value == value)
@@ -158,11 +156,9 @@ int64_t ocutils_list_getpos (List* list, void* value)
 void* ocutils_list_get (List* list, int64_t position)
 {
   void* val;
-  ListNode* prev = NULL;
   ListNode* next = list->head;
   for(int64_t curPos = 0; curPos < position; curPos++)
   {
-    prev = next;
     next = next->next;
   }
   val = next->value;
