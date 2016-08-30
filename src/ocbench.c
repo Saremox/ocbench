@@ -114,15 +114,13 @@ bool parse_dir(char* path, List* files)
       free(dircheck);
       continue;
     }
-    free(dircheck);
-    ocdataFile* file = malloc(sizeof(ocdataFile));
-    file->path    = filepath;
-    file->size    = file_size(filepath);
-    file->file_id = -1;
+    ocdataFile* file = ocdata_new_file(-1, filepath, file_size(filepath));
     if(file->size == 0)
       ocdata_free_file(file);
     else
       ocutils_list_add(files, file);
+    free(filepath);
+    free(dircheck);
     debug("Add: %s with a size of %ld bytes",file->path,file->size);
   }
   closedir(curdir);
@@ -148,11 +146,8 @@ void parse_codecs(char* codecstring, List* codecList)
   ocutils_list_foreach_f(pluginstrings, pluginstring, char*)
   {
     char* pluginname = strtok(pluginstring, ":");
-    ocdataPlugin* tmpPlugin = malloc(sizeof(ocdataPlugin));
-    tmpPlugin->name       = malloc(strlen(pluginname)+1);
-                            memcpy(tmpPlugin->name,pluginname,
-                                   strlen(pluginname)+1);
-    tmpPlugin->plugin_id  = -1;
+
+    ocdataPlugin* tmpPlugin = ocdata_new_plugin(-1, pluginname);
 
     SquashPlugin* testplugin = squash_get_plugin(pluginname);
     check(testplugin != NULL,"Squash didn't found plugin name \"%s\"",
@@ -166,12 +161,7 @@ void parse_codecs(char* codecstring, List* codecList)
     char* codecName = strtok(codecsForPlugin, ";");
     while (codecName != NULL)
     {
-      ocdataCodec* tmpCodec = malloc(sizeof(ocdataCodec));
-      tmpCodec->codec_id    = -1;
-      tmpCodec->plugin_id   = tmpPlugin;
-      tmpCodec->name        = malloc(strlen(codecName)+1);
-                              memcpy(tmpCodec->name, codecName,
-                                     strlen(codecName)+1);
+      ocdataCodec* tmpCodec = ocdata_new_codec(-1, tmpPlugin, codecName);
       ocutils_list_add(codecList, tmpCodec);
       SquashCodec* testcodec = squash_get_codec(tmpCodec->name);
       check(testcodec != NULL,
@@ -267,9 +257,6 @@ int main (int argc, char *argv[])
   List* files     = ocutils_list_create();
   List* codecList = ocutils_list_create();
 
-  ocutils_list_freefp(files, (ocutilsListFreeFunction) ocdata_free_file);
-  ocutils_list_freefp(codecList, (ocutilsListFreeFunction) ocdata_free_codec);
-
   parse_arguments(argc,argv);
   parse_dir(directoryPath, files);
   parse_codecs(codecs,codecList);
@@ -293,6 +280,8 @@ int main (int argc, char *argv[])
   {
     ocworker_schedule_jobs(workerctx, curfile,
       codecList, &jobs);
+    // Destroy jobid list since we don't need it by now
+    ocutils_list_destroy(jobs);
   }
 
   // Workaround to ensure jobs are scheduled for exit check
@@ -318,6 +307,7 @@ int main (int argc, char *argv[])
 
   ocdata_destroy_context(&myctx);
 
+  ocdata_garbage_collect();
   ocutils_list_destroy(codecList);
   ocutils_list_destroy(files);
   return EXIT_SUCCESS;

@@ -67,6 +67,8 @@ ocworkerStatus ocworker_deserialize_job(ocworkerJob* job, char* serialized_str)
     return OCWORKER_FAILURE;
   }
 
+  free(copy);
+
   return OCWORKER_OK;
 }
 
@@ -155,6 +157,7 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
       ocsched_printf(ctx, sendbuf);
       debug("Send \"%s\" from %d",sendbuf,ctx->pid);
       free(sendbuf);
+      free(recvjob);
 
       ocdata_garbage_collect();
     }
@@ -256,8 +259,11 @@ void* ocworker_worker_watchdog_loop(void* data)
     }
   }
 killWatchdog:
-  ocsched_destroy_context(&worker->ctx);
+  pthread_mutex_lock(&wdctx->ctx->lock);
+  ocutils_list_remptr(wdctx->ctx->worker,worker);
 
+  ocsched_destroy_context(&worker->ctx);
+  pthread_mutex_unlock(&wdctx->ctx->lock);
   free(worker);
   free(wdctx);
   free(name);
@@ -276,15 +282,15 @@ void* ocworker_schedule_worker(void* data)
     nanosleep(&sleeptimer,NULL);
 
     int running_jobs = 0;
+    pthread_mutex_lock(&ctx->lock);
     ocutils_list_foreach_f(ctx->worker, curworker, ocworker*)
     {
       if (curworker->cur_job != NULL)
         running_jobs++;
     }
     if(running_jobs != 0)
-      continue;
+      goto unlock_mutex;
 
-    pthread_mutex_lock(&ctx->lock);
 
     for (size_t i = 0; i < ctx->worker->items; i++)
     {
@@ -307,8 +313,7 @@ void* ocworker_schedule_worker(void* data)
     else
     {
       // No jobs are in queue continue waiting
-      pthread_mutex_unlock(&ctx->lock);
-      continue;
+      goto unlock_mutex;
     }
 
     for (size_t i = 0; i < ctx->worker->items; i++) {
@@ -316,6 +321,7 @@ void* ocworker_schedule_worker(void* data)
       ocworker* worker = (ocworker*)    ocutils_list_get(ctx->worker, i);
       worker->next_job = job;
     }
+    unlock_mutex:
     pthread_mutex_unlock(&ctx->lock);
   }
 }
