@@ -44,7 +44,7 @@ void ocutils_list_clear  (List* list)
 void  ocutils_list_remptr (List* list, void* val)
 {
   int64_t position = ocutils_list_getpos(list,val);
-  check(position > 0,"cannot find the given value in the list");
+  check(position >= 0,"cannot find the given value in the list");
   ocutils_list_rempos(list,position);
 error:
   return;
