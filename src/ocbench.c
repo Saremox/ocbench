@@ -295,6 +295,10 @@ int main (int argc, char *argv[])
       codecList, &jobs);
   }
 
+  // Workaround to ensure jobs are scheduled for exit check
+  struct timespec sleeptimer = {2,0};
+  nanosleep(&sleeptimer,NULL);
+
   while (ocworker_is_running(workerctx) == OCWORKER_IS_RUNNING) {
     struct timespec sleeptimer = {0,250*1000*1000};
     nanosleep(&sleeptimer,NULL);
@@ -303,7 +307,14 @@ int main (int argc, char *argv[])
   ocworker_kill(workerctx);
 
   ocdataContext* myctx;
+  jobs   = workerctx->jobsDone;
+
   ocdata_create_context(&myctx,databasePath,0);
+
+  ocutils_list_foreach_f(jobs, curjob,ocworkerJob*)
+  {
+    ocdata_add_result(myctx, curjob->result);
+  }
 
   ocdata_destroy_context(&myctx);
 
