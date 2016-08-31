@@ -4,7 +4,7 @@ project(openCompressBench)
 enable_testing()
 
 set (OCBENCH_VERSION_MAJOR 0)
-set (OCBENCH_VERSION_MINOR 2)
+set (OCBENCH_VERSION_MINOR 3)
 set (OCBENCH_VERSION_PATCH 0)
 
 # Get the current working branch
