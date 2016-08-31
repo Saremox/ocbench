@@ -1,3 +1,23 @@
+/**
+ * This File is part of openCompressBench
+ * Copyright (C) 2016 Michael Strassberger <saremox@linux.com>
+ *
+ * openCompressBench is free software: you can redistribute
+ * it and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation,
+ * version 2 of the License.
+ *
+ * Some open source application is distributed in the hope that it will
+ * be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @license GPL-2.0 <https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html>
+ */
+
 #include <dirent.h>
 #include <getopt.h>
 #include <stdio.h>
@@ -44,6 +64,9 @@ void print_help(char* programname)
 "                       1 LOG_WARN DEFAULT\n"
 "                       2 LOG_INFO\n"
 "                       3 LOG_DEBUG\n"
+"  -L, --license    \n"
+"  -W, --warranty   Print warranty details\n"
+"  -C, --conditions Print redistribution conditions\n"
 "  -h, --help       Print this page\n"
 "  -u, --Usage      Print this page\n"
 "  -V, --version    Print version of %s\n\n"
@@ -57,12 +80,35 @@ printf(
 "%s openCompressBench Version %d.%d.%d+%s@%s\n"
 "Copyright (C) 2016 Michael Strassberger "
 "<saremox@linux.com>\n"
-"openCompressBench comes with ABSOLUTELY NO WARRANTY.\n"
-"This is free software, and you are welcome\n"
-"to redistribute it under certain conditions;\n",
+"License GPLv2: GNU GPL Version 2\n"
+"<https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html>\n"
+"This is free software: you are free to change and redistribute it.\n"
+"There is NO WARRANTY, to the extent permitted by law.\n",
 programname,OCBENCH_VERSION_MAJOR,OCBENCH_VERSION_MINOR,OCBENCH_VERSION_PATCH,
 GIT_BRANCH,GIT_COMMIT_HASH);
+exit(EXIT_SUCCESS);
 }
+
+void print_license()
+{
+printf(
+"openCompressBench\n\n"
+"Copyright (C) 2016 Michael Strassberger saremox@linux.com\n\n"
+"This program is free software; you can redistribute it and/or\n"
+"modify it under the terms of the GNU General Public License\n"
+"as published by the Free Software Foundation; version 2 of \n"
+"the License.\n\n"
+"This program is distributed in the hope that it will be useful,\n"
+"but WITHOUT ANY WARRANTY; without even the implied warranty of \n"
+"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the \n"
+"GNU General Public License for more details.\n\n"
+"You should have received a copy of the GNU General Public License\n"
+"along with this program; if not, write to the Free Software \n"
+"Foundation, Inc.,""51 Franklin Street, Fifth Floor, Boston, \n"
+"MA 02110-1301, USA.\n");
+exit(EXIT_SUCCESS);
+}
+
 
 off_t file_size(const char *filename) {
   struct stat st;
@@ -192,13 +238,16 @@ void parse_arguments(int argc, char *argv[])
         {"verbose",   no_argument,       0, 'v'},
         {"quiet",     no_argument,       0, 'q'},
         {"log-level", required_argument, 0, 'l'},
+        {"license",   no_argument,       0, 'L'},
+        {"warranty",  no_argument,       0, 'W'},
+        {"conditions",no_argument,       0, 'C'},
         {"help",      no_argument,       0, 'h'},
         {"usage",     no_argument,       0, 'u'},
         {"version",   no_argument,       0, 'V'},
         {0,           0,                 0,  0 }
     };
 
-    c = getopt_long(argc, argv, "c:D:w:vqd:huVl:",
+    c = getopt_long(argc, argv, "c:D:w:vqd:LhuVl:",
              long_options, &option_index);
     if (c == -1)
       break;
@@ -236,13 +285,13 @@ void parse_arguments(int argc, char *argv[])
       debug("Setting directory for analysis to: \"%s\"",optarg);
       directoryPath = optarg;
       break;
+    case 'L':
+      print_license();
     case 'h':
     case 'u':
       print_help(argv[0]);
-      break;
     case 'V':
       print_version(argv[0]);
-      exit(EXIT_SUCCESS);
     }
   }
   return;
