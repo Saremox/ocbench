@@ -301,10 +301,15 @@ void parse_arguments(int argc, char *argv[])
 
 int main (int argc, char *argv[])
 {
-  List* files     = ocutils_list_create();
-  List* codecList = ocutils_list_create();
+  List*             files     = ocutils_list_create();
+  List*             codecList = ocutils_list_create();
+  List*             jobs;
+  ocworkerContext*  workerctx = NULL;
+  ocdataContext*    myctx;
 
   parse_arguments(argc,argv);
+
+  ocworker_start(worker,&workerctx);
   parse_dir(directoryPath, files);
   parse_codecs(codecs,codecList);
   if(verbosityLevel == OCDEBUG_DEBUG)
@@ -317,10 +322,6 @@ int main (int argc, char *argv[])
     }
   }
   check(files->items > 0, "No Files found at \"%s\"",directoryPath);
-
-  List*            jobs;
-  ocworkerContext* workerctx = NULL;
-  ocworker_start(worker,&workerctx);
   check(workerctx!=NULL,"worker context should not be NULL");
 
   ocutils_list_foreach_f(files, curfile, ocdataFile*)
@@ -342,7 +343,6 @@ int main (int argc, char *argv[])
 
   ocworker_kill(workerctx);
 
-  ocdataContext* myctx;
   jobs   = workerctx->jobsDone;
 
   ocdata_create_context(&myctx,databasePath,0);
