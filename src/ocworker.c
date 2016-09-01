@@ -94,13 +94,18 @@ ocworkerStatus ocworker_deserialize_job(ocworkerJob* job, char* serialized_str)
 
 void ocworker_worker_process_signalhandler(int signl)
 {
-  if (signl == SIGINT) {
-    // Ignore since we're wating for a OCWORKER_KILL_SIG
-  }
-  else if(signl == OCWORKER_KILL_SIG)
-  {
-    log_info("Worker[%d] shutting down",getpid());
-    got_killed = 1;
+  switch (signl) {
+    case SIGINT:
+
+      break;
+    case OCWORKER_KILL_SIG:
+      log_info("Worker[%d] shutting down",getpid());
+      got_killed = 1;
+      break;
+    case SIGSEGV:
+      log_warn("Worker[%d] got segfault",getpid());
+
+      break;
   }
 }
 
@@ -111,6 +116,7 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
   char*  name     = malloc(namesize);
                     snprintf(name, namesize, name_fmt, getpid());
 
+  signal(SIGSEGV, ocworker_worker_process_signalhandler);
   signal(SIGINT, ocworker_worker_process_signalhandler);
   signal(OCWORKER_KILL_SIG, ocworker_worker_process_signalhandler);
 
@@ -278,12 +284,7 @@ void* ocworker_worker_watchdog_loop(void* data)
     }
   }
 killWatchdog:
-  pthread_mutex_lock(&wdctx->ctx->lock);
-  ocutils_list_remptr(wdctx->ctx->worker,worker);
-
   ocsched_destroy_context(&worker->ctx);
-  pthread_mutex_unlock(&wdctx->ctx->lock);
-  free(worker);
   free(wdctx);
   free(name);
   pthread_exit(EXIT_SUCCESS);
@@ -460,5 +461,9 @@ ocworker_kill(ocworkerContext*  ctx)
     pthread_join(worker->watchdog, NULL);
   }
   pthread_cancel(ctx->scheduler);
+
+  ocutils_list_freefp(ctx->worker, free);
+  ocutils_list_destroy(ctx->worker);
+
   return OCWORKER_OK;
 }
