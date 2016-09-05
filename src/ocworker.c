@@ -32,20 +32,22 @@ int got_killed = 0; // Used by worker processes
 
 char* ocworker_serialize_job(ocworkerJob* job)
 {
-  char* fmt_str  = "BEGIN;%ld;%ld;%s;%ld;%ld;END";
+  char* fmt_str  = "BEGIN;%ld;%ld;%s;%ld;%ld;%ld;END";
   size_t strsize = snprintf(NULL,0,fmt_str,
     job->jobid,
     job->result->file_id->size,
     job->result->comp_id->codec_id->name,
     job->result->compressed_size,
-    job->result->time_needed)+1;
+    job->result->compressed_time,
+    job->result->decompressed_time)+1;
   char* ret = malloc(strsize);
               snprintf(ret, strsize, fmt_str,
                 job->jobid,
                 job->result->file_id->size,
                 job->result->comp_id->codec_id->name,
                 job->result->compressed_size,
-                job->result->time_needed);
+                job->result->compressed_time,
+                job->result->decompressed_time);
   return ret;
 }
 
@@ -64,7 +66,7 @@ ocworkerStatus ocworker_deserialize_job(ocworkerJob* job, char* serialized_str)
 
   int file_size = atoi(strtok(NULL, ";"));
   if(job->result == NULL)
-    job->result = ocdata_new_result(NULL, NULL, 0, 0);
+    job->result = ocdata_new_result(NULL, NULL, 0, 0, 0);
 
   if(job->result->file_id == NULL)
     job->result->file_id  = ocdata_new_file(-1, NULL, file_size);
@@ -77,8 +79,9 @@ ocworkerStatus ocworker_deserialize_job(ocworkerJob* job, char* serialized_str)
   if(job->result->comp_id->codec_id == NULL)
     job->result->comp_id->codec_id = ocdata_new_codec(-1, NULL, codecname);
 
-  job->result->compressed_size = atoi(strtok(NULL, ";"));
-  job->result->time_needed     = atoi(strtok(NULL, ";"));
+  job->result->compressed_size   = atoi(strtok(NULL, ";"));
+  job->result->compressed_time   = atoi(strtok(NULL, ";"));
+  job->result->decompressed_time = atoi(strtok(NULL, ";"));
 
   curPos = strtok(NULL, ";");
   if(strcmp("END", curPos) != 0)
@@ -150,10 +153,10 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
         squash_codec_get_max_compressed_size(codec,decompressed->size));
       recvjob->result->compressed_size = compressed->size;
 
-      recvjob->result->time_needed = 0;
+      recvjob->result->compressed_time = 0;
       int iterations = 0;
 
-      for ( ; recvjob->result->time_needed < MINIMUM_RUN_TIME; iterations++) {
+      for ( ; recvjob->result->compressed_time < MINIMUM_RUN_TIME; iterations++) {
         struct timespec begin,end;
 
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&begin);
@@ -168,7 +171,7 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
         int64_t secs = end.tv_sec - begin.tv_sec;
         int64_t usecs = end.tv_nsec - begin.tv_nsec;
 
-        recvjob->result->time_needed += secs*1000*1000 + usecs/1000;
+        recvjob->result->compressed_time += secs*1000*1000 + usecs/1000;
 
         check(ret == SQUASH_OK,"failed to compress data [%d] : %s",
           ret,squash_status_to_string(ret));
@@ -177,7 +180,7 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
       // Early resource freeing
       ocmemfd_resize(compressed, 1024);
 
-      recvjob->result->time_needed /= iterations;
+      recvjob->result->compressed_time /= iterations;
 
       char* sendbuf = ocworker_serialize_job(recvjob);
       ocsched_printf(ctx, sendbuf);
@@ -385,7 +388,7 @@ ocworker_schedule_job(ocworkerContext*  ctx, ocdataFile* file,
 {
   ocworkerJob* newjob = calloc(1, sizeof(ocworkerJob));
 
-  newjob->result          = ocdata_new_result(NULL, file, 0, 0);
+  newjob->result          = ocdata_new_result(NULL, file, 0, 0, 0);
   newjob->result->comp_id = ocdata_new_comp(-1, codec, ocutils_list_create());
   newjob->jobid           = ++(ctx->lastjobid);
   ocutils_list_add(newjob->result->comp_id->options,

@@ -17,7 +17,7 @@
  *
  * @license GPL-2.0 <https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html>
  */
- 
+
 #include <sqlite3.h>
 #include <stdint.h>
 #include "ocutils/list.h"
@@ -92,7 +92,8 @@ struct __ocdataResult{
   ocdataCompresion* comp_id;
   ocdataFile*       file_id;
   size_t            compressed_size;
-  int64_t           time_needed;
+  int64_t           compressed_time;
+  int64_t           decompressed_time;
 };
 
 typedef enum {
@@ -166,7 +167,8 @@ ocdata_new_result(
   ocdataCompresion* comp,
   ocdataFile* file,
   size_t compressed,
-  int64_t time_needed
+  int64_t compressed_time,
+  int64_t decompressed_time
 );
 
 ocdataStatus

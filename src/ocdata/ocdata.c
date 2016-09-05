@@ -114,7 +114,8 @@ ocdata_create_tables(ocdataContext* ctx)
     "   comp_id         INTEGER NOT NULL,"
     "   file_id         INTEGER NOT NULL,"
     "   compressed_size INTEGER NOT NULL,"
-    "   time            INTEGER NOT NULL,"
+    "   compressed_time INTEGER NOT NULL,"
+    "   decompressed_time INTEGER NOT NULL,"
     "   PRIMARY KEY (comp_id, file_id),"
     "   FOREIGN KEY(comp_id) REFERENCES compression(comp_id),"
     "   FOREIGN KEY(file_id) REFERENCES file(file_id));";
@@ -174,8 +175,9 @@ ocdata_prepare_statements(ocdataContext* ctx)
   check(ret == SQLITE_OK, "failed to prepare statement: %s",
     sqlite3_errmsg(ctx->db));
 
-  sql = "INSERT INTO result(comp_id, file_id, compressed_size, time)"
-        "   VALUES ( ? , ? , ? , ? );";
+  sql = "INSERT INTO result(comp_id, file_id, compressed_size, compressed_time,"
+        "decompressed_time)"
+        "   VALUES ( ? , ? , ? , ? , ? );";
   ret = sqlite3_prepare_v2(ctx->db, sql, -1, &ctx->result_add, 0);
   check(ret == SQLITE_OK, "failed to prepare statement: %s",
     sqlite3_errmsg(ctx->db));
@@ -358,13 +360,14 @@ ocdata_new_comp(int64_t id, ocdataCodec* codec_id, List* options)
 
 ocdataResult*
 ocdata_new_result(ocdataCompresion* comp, ocdataFile* file, size_t compressed,
-  int64_t time_needed)
+  int64_t compressed_time, int64_t decompressed_time)
 {
   ocdataResult* tmp     = malloc(sizeof(ocdataResult));
   tmp->comp_id          = comp;
   tmp->file_id          = file;
   tmp->compressed_size  = compressed;
-  tmp->time_needed      = time_needed;
+  tmp->compressed_time  = compressed_time;
+  tmp->decompressed_time= decompressed_time;
 
   ocutils_list_add(results,tmp);
 
@@ -664,7 +667,8 @@ ocdata_add_result(ocdataContext* ctx, ocdataResult* result)
   sqlite3_bind_int(ctx->result_add, 1, result->comp_id->comp_id);
   sqlite3_bind_int(ctx->result_add, 2, result->file_id->file_id);
   sqlite3_bind_int(ctx->result_add, 3, result->compressed_size);
-  sqlite3_bind_int(ctx->result_add, 4, result->time_needed);
+  sqlite3_bind_int(ctx->result_add, 4, result->compressed_time);
+  sqlite3_bind_int(ctx->result_add, 5, result->decompressed_time);
   ret = sqlite3_step(ctx->result_add);
 
   RESET_STATEMENT(ctx->db, ctx->result_add, ret);
