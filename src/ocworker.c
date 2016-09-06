@@ -114,17 +114,23 @@ void ocworker_worker_process_signalhandler(int signl)
 
 void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
 {
-  char*  name_fmt = "/worker[%d]";
+  char*  name_fmt = "/worker[%d]-compressed";
   size_t namesize = snprintf(NULL,0,name_fmt,getpid())+1;
-  char*  name     = malloc(namesize);
-                    snprintf(name, namesize, name_fmt, getpid());
+  char*  namecp   = malloc(namesize);
+                    snprintf(namecp, namesize, name_fmt, getpid());
+
+         name_fmt = "/worker[%d]-decompressed";
+         namesize = snprintf(NULL,0,name_fmt,getpid())+1;
+  char*  namedcp  = malloc(namesize);
+                    snprintf(namedcp, namesize, name_fmt, getpid());
 
   signal(SIGSEGV, ocworker_worker_process_signalhandler);
   signal(SIGINT, ocworker_worker_process_signalhandler);
   signal(OCWORKER_KILL_SIG, ocworker_worker_process_signalhandler);
 
-  ocMemfdContext* decompressed = (ocMemfdContext *) data;
-  ocMemfdContext* compressed   = ocmemfd_create_context(name,1024);
+  ocMemfdContext* orignal = (ocMemfdContext *) data;
+  ocMemfdContext* compressed   = ocmemfd_create_context(namecp,4096);
+  ocMemfdContext* decompressed = ocmemfd_create_context(namedcp,orignal->size);
 
   char   recvBuf[4096];
 
@@ -140,17 +146,18 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
       debug("recieved \"%s\"",recvBuf);
       ocworker_deserialize_job(recvjob, recvBuf);
       // resize shared memfd buffer to file size
-      int oldsize = decompressed->size;
-      decompressed->size = recvjob->result->file_id->size;
-      ocmemfd_remap_buffer(decompressed,oldsize);
+      int oldsize = orignal->size;
+      orignal->size = recvjob->result->file_id->size;
+      ocmemfd_remap_buffer(orignal,oldsize);
 
       SquashCodec* codec =
         squash_get_codec(recvjob->result->comp_id->codec_id->name);
       check(codec != NULL, "squash cannot find \"%s\" codec",
         recvjob->result->comp_id->codec_id->name);
 
+      ocmemfd_resize(decompressed, orignal->size);
       ocmemfd_resize(compressed,
-        squash_codec_get_max_compressed_size(codec,decompressed->size));
+        squash_codec_get_max_compressed_size(codec,orignal->size));
       recvjob->result->compressed_size = compressed->size;
 
       recvjob->result->compressed_time = 0;
@@ -163,8 +170,8 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
         int ret = squash_codec_compress(codec,
                                         &recvjob->result->compressed_size,
                                         compressed->buf,
-                                        decompressed->size,
-                                        decompressed->buf,
+                                        orignal->size,
+                                        orignal->buf,
                                         NULL);
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
 
@@ -177,10 +184,35 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
           ret,squash_status_to_string(ret));
       }
 
-      // Early resource freeing
-      ocmemfd_resize(compressed, 1024);
-
       recvjob->result->compressed_time /= iterations;
+      iterations = 0;
+
+      for ( ; recvjob->result->decompressed_time < MINIMUM_RUN_TIME; iterations++) {
+        struct timespec begin,end;
+
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&begin);
+        int ret = squash_codec_decompress(codec,
+                                        &decompressed->size,
+                                        decompressed->buf,
+                                        compressed->size,
+                                        compressed->buf,
+                                        NULL);
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
+
+        int64_t secs = end.tv_sec - begin.tv_sec;
+        int64_t usecs = end.tv_nsec - begin.tv_nsec;
+
+        recvjob->result->decompressed_time += secs*1000*1000 + usecs/1000;
+
+        check(ret == SQUASH_OK,"failed to compress data [%d] : %s",
+          ret,squash_status_to_string(ret));
+      }
+
+      recvjob->result->decompressed_time /= iterations;
+
+      // Early resource freeing
+      ocmemfd_resize(compressed, 4096);
+      ocmemfd_resize(decompressed, 4096);
 
       char* sendbuf = ocworker_serialize_job(recvjob);
       ocsched_printf(ctx, sendbuf);
@@ -200,8 +232,9 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
   }
   ocdata_garbage_collect();
   ocmemfd_destroy_context(&compressed);
-  ocmemfd_destroy_context(&decompressed);
-  free(name);
+  ocmemfd_destroy_context(&orignal);
+  free(namecp);
+  free(namedcp);
   exit(EXIT_SUCCESS);
 }
 
