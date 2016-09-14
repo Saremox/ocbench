@@ -180,7 +180,8 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
 
         recvjob->result->compressed_time += secs*1000*1000 + usecs/1000;
 
-        check(ret == SQUASH_OK,"failed to compress data [%d] : %s",
+        check(ret == SQUASH_OK,"failed to compress data with %s [%d] : %s",
+          recvjob->result->comp_id->codec_id->name,
           ret,squash_status_to_string(ret));
       }
 
@@ -204,7 +205,8 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
 
         recvjob->result->decompressed_time += secs*1000*1000 + usecs/1000;
 
-        check(ret == SQUASH_OK,"failed to compress data [%d] : %s",
+        check(ret == SQUASH_OK,"failed to decompress data with %s [%d] : %s",
+          recvjob->result->comp_id->codec_id->name,
           ret,squash_status_to_string(ret));
       }
 
@@ -227,15 +229,19 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
       struct timespec sleeptimer = {0,25000000};
       nanosleep(&sleeptimer,NULL);
     }
-    error:
-      continue;
   }
   ocdata_garbage_collect();
   ocmemfd_destroy_context(&compressed);
+  ocmemfd_destroy_context(&decompressed);
   ocmemfd_destroy_context(&orignal);
   free(namecp);
   free(namedcp);
   exit(EXIT_SUCCESS);
+error:
+  ocmemfd_destroy_context(&compressed);
+  ocmemfd_destroy_context(&decompressed);
+  ocmemfd_destroy_context(&orignal);
+  kill(getpid(),SIGKILL);
 }
 
 void* ocworker_worker_watchdog_loop(void* data)
