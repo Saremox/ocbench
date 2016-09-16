@@ -37,11 +37,20 @@
 
 // options
 
-char* databasePath    = "ocbench.sqlite";
-char* directoryPath   = "./";
-char* codecs          = "bzip2:bzip2,lzma:xz,zlib:gzip";
-int   worker          = 1;
-int   verbosityLevel  = OCDEBUG_WARN;
+char*             transactionlog  = NULL;
+char*             databasePath    = "ocbench.sqlite";
+char*             directoryPath   = "./";
+char*             codecs          = "bzip2:bzip2,lzma:xz,zlib:gzip";
+int               worker          = 1;
+int               verbosityLevel  = OCDEBUG_WARN;
+
+// Globals
+List*             files;
+List*             codecList;
+List*             jobs;
+ocworkerContext*  workerctx = NULL;
+ocdataContext*    myctx     = NULL;
+int               shutdown_request = 0;
 
 void print_help(char* programname)
 {
@@ -49,27 +58,30 @@ void print_help(char* programname)
 "Usage: %s [OPTION]... --directory=./\n"
 "\n"
 "Options:\n"
-"  -D, --database   PATH to sqlite3 database file\n"
-"                   Default: ./results.sqlite3\n"
-"  -d, --directory  PATH to directory which will be analyzed\n"
-"                   Default: current working directory\n"
-"  -c, --codecs     STRING comma seperated list of codecs which will\n"
-"                   be used. Format: \"plugin:codec;codec,plugin:...\"\n"
-"                   Default: \"bzip2:bzip2,lzma:xz,zlib:gzip\"\n"
-"  -w, --Worker     INT ammount of worker processes.\n"
-"                   Default: 1\n\n"
-"  -v, --verbose    more verbosity equals --log-level=2\n"
-"  -q  --quiet      log only errors equals --log-level=0\n"
-"  -l, --log-level  INT 0 LOG_ERR\n"
-"                       1 LOG_WARN DEFAULT\n"
-"                       2 LOG_INFO\n"
-"                       3 LOG_DEBUG\n"
-"  -L, --license    \n"
-"  -W, --warranty   Print warranty details\n"
-"  -C, --conditions Print redistribution conditions\n"
-"  -h, --help       Print this page\n"
-"  -u, --Usage      Print this page\n"
-"  -V, --version    Print version of %s\n\n"
+"  -D, --database       PATH to sqlite3 database file\n"
+"                       Default: ./results.sqlite3\n"
+"  -d, --directory      PATH to directory which will be analyzed\n"
+"                       Default: current working directory\n"
+"  -t, --transactionlog PATH to a transactionlog file\n"
+"                       if the program get's terminated before finished this\n"
+"                       file will be used to resume execution there it left\n"
+"  -c, --codecs         STRING comma seperated list of codecs which will\n"
+"                       be used. Format: \"plugin:codec;codec,plugin:...\"\n"
+"                       Default: \"bzip2:bzip2,lzma:xz,zlib:gzip\"\n"
+"  -w, --Worker         INT ammount of worker processes.\n"
+"                       Default: 1\n\n"
+"  -v, --verbose        more verbosity equals --log-level=2\n"
+"  -q  --quiet          log only errors equals --log-level=0\n"
+"  -l, --log-level      INT 0 LOG_ERR\n"
+"                           1 LOG_WARN DEFAULT\n"
+"                           2 LOG_INFO\n"
+"                           3 LOG_DEBUG\n"
+"  -L, --license        \n"
+"  -W, --warranty       Print warranty details\n"
+"  -C, --conditions     Print redistribution conditions\n"
+"  -h, --help           Print this page\n"
+"  -u, --Usage          Print this page\n"
+"  -V, --version        Print version of %s\n\n"
 ,programname,programname);
   exit(EXIT_SUCCESS);
 }
@@ -231,23 +243,22 @@ void parse_arguments(int argc, char *argv[])
   while (1) {
     int option_index = 0;
     static struct option long_options[] = {
-        {"codecs",    required_argument, 0, 'c'},
-        {"database",  required_argument, 0, 'D'},
-        {"worker",    required_argument, 0, 'w'},
-        {"directory", required_argument, 0, 'd'},
-        {"verbose",   no_argument,       0, 'v'},
-        {"quiet",     no_argument,       0, 'q'},
-        {"log-level", required_argument, 0, 'l'},
-        {"license",   no_argument,       0, 'L'},
-        {"warranty",  no_argument,       0, 'W'},
-        {"conditions",no_argument,       0, 'C'},
-        {"help",      no_argument,       0, 'h'},
-        {"usage",     no_argument,       0, 'u'},
-        {"version",   no_argument,       0, 'V'},
-        {0,           0,                 0,  0 }
+        {"codecs",          required_argument, 0, 'c'},
+        {"database",        required_argument, 0, 'D'},
+        {"worker",          required_argument, 0, 'w'},
+        {"directory",       required_argument, 0, 'd'},
+        {"transactionlog",  required_argument, 0, 't'},
+        {"log-level",       required_argument, 0, 'l'},
+        {"verbose",         no_argument,       0, 'v'},
+        {"quiet",           no_argument,       0, 'q'},
+        {"license",         no_argument,       0, 'L'},
+        {"help",            no_argument,       0, 'h'},
+        {"usage",           no_argument,       0, 'u'},
+        {"version",         no_argument,       0, 'V'},
+        {0,                 0,                 0,  0 }
     };
 
-    c = getopt_long(argc, argv, "c:D:w:vqd:LhuVl:",
+    c = getopt_long(argc, argv, "c:D:w:d:t:l:vqLhuV",
              long_options, &option_index);
     if (c == -1)
       break;
@@ -266,13 +277,13 @@ void parse_arguments(int argc, char *argv[])
       worker = atoi(optarg);
       check(worker > 0, "Worker count must be greater than 0");
       break;
-    case 'q':
-      debug("Turn on quiet");
-      verbosityLevel = OCDEBUG_ERROR;
+    case 'd':
+      debug("Setting directory for analysis to: \"%s\"",optarg);
+      directoryPath = optarg;
       break;
-    case 'v':
-      debug("Turn on Verbosity");
-      verbosityLevel = OCDEBUG_INFO;
+    case 't':
+      debug("Setting transactionlog to: \"%s\"",optarg);
+      transactionlog = optarg;
       break;
     case 'l':
       tmp = atoi(optarg);
@@ -281,9 +292,13 @@ void parse_arguments(int argc, char *argv[])
       else
         log_err("Invalid log level: \"%s\"",optarg);
       break;
-    case 'd':
-      debug("Setting directory for analysis to: \"%s\"",optarg);
-      directoryPath = optarg;
+    case 'v':
+      debug("Turn on Verbosity");
+      verbosityLevel = OCDEBUG_INFO;
+      break;
+    case 'q':
+      debug("Turn on quiet");
+      verbosityLevel = OCDEBUG_ERROR;
       break;
     case 'L':
       print_license();
@@ -299,17 +314,59 @@ void parse_arguments(int argc, char *argv[])
     print_help(argv[0]);
 }
 
+void cleanup()
+{
+  if(myctx)
+    ocdata_destroy_context(&myctx);
+  ocdata_garbage_collect();
+  if(codecList)
+    ocutils_list_destroy(codecList);
+  if(files)
+    ocutils_list_destroy(files);
+}
+
+void shutdown()
+{
+  ocworker_kill(workerctx);
+
+  cleanup();
+
+  exit(EXIT_SUCCESS);
+}
+
+void signal_handler(int sig)
+{
+  switch (sig) {
+    case SIGTERM:
+      shutdown();
+    case SIGINT:
+      if(shutdown_request == 0)
+      {
+        log_info("Got ctrl + C terminating gracefully");
+        shutdown_request = SIGKILL;
+      }
+      else
+      {
+        log_info("Got ctrl + C second time FORCE QUIT");
+        ocworker_force_kill(workerctx);
+        exit(EXIT_FAILURE);
+      }
+  }
+}
+
 int main (int argc, char *argv[])
 {
-  List*             files     = ocutils_list_create();
-  List*             codecList = ocutils_list_create();
-  List*             jobs;
-  ocworkerContext*  workerctx = NULL;
-  ocdataContext*    myctx;
-
   parse_arguments(argc,argv);
 
   ocworker_start(worker,&workerctx);
+
+  // Register Signal handler
+  signal(SIGTERM, signal_handler);
+  signal(SIGINT, signal_handler);
+
+  files     = ocutils_list_create();
+  codecList = ocutils_list_create();
+
   parse_dir(directoryPath, files);
   parse_codecs(codecs,codecList);
   if(verbosityLevel == OCDEBUG_DEBUG)
@@ -336,9 +393,13 @@ int main (int argc, char *argv[])
   struct timespec sleeptimer = {2,0};
   nanosleep(&sleeptimer,NULL);
 
-  while (ocworker_is_running(workerctx) == OCWORKER_IS_RUNNING) {
-    struct timespec sleeptimer = {0,250*1000*1000};
+  while (true) {
+    struct timespec sleeptimer = {1,0};
     nanosleep(&sleeptimer,NULL);
+    if(ocworker_is_running(workerctx) != OCWORKER_IS_RUNNING)
+      break;
+    if(shutdown_request == SIGKILL)
+      shutdown();
   }
 
   ocworker_kill(workerctx);
@@ -352,11 +413,7 @@ int main (int argc, char *argv[])
     ocdata_add_result(myctx, curjob->result);
   }
 
-  ocdata_destroy_context(&myctx);
-
-  ocdata_garbage_collect();
-  ocutils_list_destroy(codecList);
-  ocutils_list_destroy(files);
+  cleanup();
   return EXIT_SUCCESS;
   error:
   return EXIT_FAILURE;
