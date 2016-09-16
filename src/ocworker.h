@@ -17,7 +17,7 @@
  *
  * @license GPL-2.0 <https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html>
  */
- 
+
 #include "ocsched/ocsched.h"
 #include "ocdata/ocdata.h"
 #include "ocmemfd/ocmemfd.h"
@@ -127,4 +127,7 @@ ocworker_kill(
   ocworkerContext*  ctx
 );
 
-void child_process(ocschedProcessContext* parent, void* data);
+ocworkerStatus
+ocworker_force_kill(
+  ocworkerContext*  ctx
+);

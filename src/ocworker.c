@@ -509,3 +509,12 @@ ocworker_kill(ocworkerContext*  ctx)
 
   return OCWORKER_OK;
 }
+
+ocworkerStatus
+ocworker_force_kill(ocworkerContext* ctx)
+{
+  ocutils_list_foreach_f(ctx->worker, worker, ocworker*)
+  {
+    kill(worker->ctx->pid, SIGKILL);
+  }
+}
