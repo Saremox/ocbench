@@ -357,6 +357,7 @@ void signal_handler(int sig)
 int main (int argc, char *argv[])
 {
   parse_arguments(argc,argv);
+  debug("Loaded Squash Version: %s",squash_version_api());
 
   ocworker_start(worker,&workerctx);
 
