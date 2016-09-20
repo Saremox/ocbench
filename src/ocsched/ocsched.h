@@ -17,10 +17,9 @@
  *
  * @license GPL-2.0 <https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html>
  */
- 
+
 #include <unistd.h>
 #include <mqueue.h>
-#include <squash.h>
 
 #ifndef OCSCHEDH
 #define OCSCHEDH
@@ -36,11 +35,6 @@ typedef struct {
   mqd_t workQueue;
   ocschedCommunicator comm;
 } ocschedProcessContext;
-
-typedef struct {
-  const char * codec;
-  SquashOptions * options;
-} ocschedJob;
 
 typedef void (*ocschedFunction)(ocschedProcessContext*,void*);
 
@@ -86,22 +80,6 @@ ocsched_recvfrom(
   ocschedProcessContext * ctx, /**< [in] context which will be recv from */
   char * buf, /**< [out] buffer in which will be recv */
   size_t n /**< [in] maximum byte count which will be recv */
-);
-
-/** STUB
-  *
-  */
-ocschedStatus
-ocsched_schedule_job(
-  ocschedJob * job /**< [in] job which get scheduled */
-);
-
-/** STUB
-  *
-  */
-ocschedStatus
-ocsched_get_job(
-  ocschedJob * job /**< [out] pointer in which we store the job */
 );
 
 /** clean up context. closes open file descriptors and free's allocated memory

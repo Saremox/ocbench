@@ -25,6 +25,7 @@
 #include "debug.h"
 #include "ocsched/ocsched.h"
 #include "ocutils/list.h"
+#include <squash/squash.h>
 
 #define MINIMUM_RUN_TIME 1000*1000
 
