@@ -196,7 +196,7 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
         int ret = squash_codec_decompress(codec,
                                         &decompressed->size,
                                         decompressed->buf,
-                                        compressed->size,
+                                        recvjob->result->compressed_size,
                                         compressed->buf,
                                         NULL);
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
