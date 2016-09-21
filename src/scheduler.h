@@ -18,7 +18,8 @@
  * @license GPL-2.0 <https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html>
  */
 
-#include "job.h"
+#include "ocutils/list.h"
+#include "ocdata/ocdata.h"
 #include "ocsched/ocsched.h"
 #include "ocmemfd/ocmemfd.h"
 #include <pthread.h>
@@ -73,27 +74,6 @@ ocworker_schedule_jobs(
   List**            jobids
 );
 
-
-ocworkerStatus
-ocworker_retrieve_job(
-  schedulerContext*  ctx,
-  int64_t           jobid,
-  Job**     job
-);
-
-ocworkerStatus
-ocworker_retrieve_jobs(
-  schedulerContext*  ctx,
-  List*             jobids,
-  List**            jobs
-);
-
-ocworkerStatus
-ocworker_unref_job(
-  schedulerContext*  ctx,
-  Job**     job
-);
-
 ocworkerStatus
 ocworker_is_running(
   schedulerContext* ctx
@@ -108,6 +88,5 @@ ocworkerStatus
 ocworker_force_kill(
   schedulerContext*  ctx
 );
-
 
 #endif

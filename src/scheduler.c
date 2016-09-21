@@ -20,7 +20,6 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
-#include <time.h>
 #include <wait.h>
 #include "debug.h"
 #include "job.h"
@@ -155,24 +154,6 @@ ocworker_schedule_jobs(schedulerContext* ctx, ocdataFile* file,
   *jobids = jobs;
 
   return OCWORKER_SCHEDULED;
-}
-
-ocworkerStatus
-ocworker_retrieve_job(schedulerContext* ctx, int64_t jobid, Job** job)
-{
-  return OCWORKER_OK;
-}
-
-ocworkerStatus
-ocworker_retrieve_jobs(schedulerContext* ctx, List* jobids, List** jobs)
-{
-  return OCWORKER_OK;
-}
-
-ocworkerStatus
-ocworker_unref_job(schedulerContext* ctx, Job** job)
-{
-  return OCWORKER_OK;
 }
 
 ocworkerStatus
