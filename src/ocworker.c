@@ -22,6 +22,7 @@
 #include <time.h>
 #include <wait.h>
 #include <setjmp.h>
+#include "job.h"
 #include "ocworker.h"
 #include "debug.h"
 #include "ocsched/ocsched.h"
@@ -33,71 +34,6 @@
 
 int got_killed = 0; // Used by worker processes
 jmp_buf buf;
-
-char* ocworker_serialize_job(ocworkerJob* job)
-{
-  char* fmt_str  = "BEGIN;%ld;%ld;%s;%ld;%ld;%ld;END";
-  size_t strsize = snprintf(NULL,0,fmt_str,
-    job->jobid,
-    job->result->file_id->size,
-    job->result->comp_id->codec_id->name,
-    job->result->compressed_size,
-    job->result->compressed_time,
-    job->result->decompressed_time)+1;
-  char* ret = malloc(strsize);
-              snprintf(ret, strsize, fmt_str,
-                job->jobid,
-                job->result->file_id->size,
-                job->result->comp_id->codec_id->name,
-                job->result->compressed_size,
-                job->result->compressed_time,
-                job->result->decompressed_time);
-  return ret;
-}
-
-ocworkerStatus ocworker_deserialize_job(ocworkerJob* job, char* serialized_str)
-{
-  char* copy = malloc(strlen(serialized_str)+1);
-  strcpy(copy, serialized_str);
-  char* curPos = strtok(copy, ";");
-  if(strcmp("BEGIN", curPos) != 0)
-  {
-    log_warn("invalid serialized string \"%s\"",curPos);
-    return OCWORKER_FAILURE;
-  }
-
-  job->jobid = atoi(strtok(NULL, ";"));
-
-  int file_size = atoi(strtok(NULL, ";"));
-  if(job->result == NULL)
-    job->result = ocdata_new_result(NULL, NULL, 0, 0, 0);
-
-  if(job->result->file_id == NULL)
-    job->result->file_id  = ocdata_new_file(-1, NULL, file_size);
-
-  char* codecname = strtok(NULL, ";");
-
-  if(job->result->comp_id == NULL)
-    job->result->comp_id = ocdata_new_comp(-1, NULL, NULL);
-
-  if(job->result->comp_id->codec_id == NULL)
-    job->result->comp_id->codec_id = ocdata_new_codec(-1, NULL, codecname);
-
-  job->result->compressed_size   = atoi(strtok(NULL, ";"));
-  job->result->compressed_time   = atoi(strtok(NULL, ";"));
-  job->result->decompressed_time = atoi(strtok(NULL, ";"));
-
-  curPos = strtok(NULL, ";");
-  if(strcmp("END", curPos) != 0)
-  {
-    log_warn("invalid serialized string \"%s\"",curPos);
-    return OCWORKER_FAILURE;
-  }
-
-  free(copy);
-
-  return OCWORKER_OK;
-}
 
 void ocworker_worker_process_signalhandler(int signl)
 {
@@ -116,7 +52,7 @@ void ocworker_worker_process_signalhandler(int signl)
   }
 }
 
-ocworkerStatus ocworker_worker_compression(ocworkerJob* myJob,
+ocworkerStatus ocworker_worker_compression(Job* myJob,
                                            SquashCodec* myCodec,
                                            ocMemfdContext* original,
                                            ocMemfdContext* compressed)
@@ -149,7 +85,7 @@ error:
   return OCWORKER_FAILURE;
 }
 
-ocworkerStatus ocworker_worker_decompression(ocworkerJob* myJob,
+ocworkerStatus ocworker_worker_decompression(Job* myJob,
                                              SquashCodec* myCodec,
                                              ocMemfdContext* compressed,
                                              ocMemfdContext* decompressed)
@@ -223,9 +159,9 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
     int readBytes = ocsched_recvfrom(ctx, recvBuf, 4096);
     if(readBytes > 0)
     {
-      ocworkerJob* recvjob = calloc(1, sizeof(ocworkerJob));
+      Job* recvjob = calloc(1, sizeof(Job));
       debug("recieved \"%s\"",recvBuf);
-      ocworker_deserialize_job(recvjob, recvBuf);
+      deserialize_job(recvjob, recvBuf);
       // resize shared memfd buffer to file size
       int oldsize = original->size;
       original->size = recvjob->result->file_id->size;
@@ -253,7 +189,7 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
       ocmemfd_resize(compressed, 4096);
       ocmemfd_resize(decompressed, 4096);
 
-      char* sendbuf = ocworker_serialize_job(recvjob);
+      char* sendbuf = serialize_job(recvjob);
       ocsched_printf(ctx, sendbuf);
       debug("Send \"%s\" from %d",sendbuf,ctx->pid);
       free(sendbuf);
@@ -351,7 +287,7 @@ void* ocworker_worker_watchdog_loop(void* data)
         worker->next_job->result->comp_id->codec_id->name);
       worker->cur_job = worker->next_job;
       worker->next_job = NULL;
-      char* sendbuf = ocworker_serialize_job(worker->cur_job);
+      char* sendbuf = serialize_job(worker->cur_job);
       ocsched_printf(worker->ctx, sendbuf);
       debug("Send \"%s\" to %d",sendbuf,worker->ctx->pid);
       free(sendbuf);
@@ -362,7 +298,7 @@ void* ocworker_worker_watchdog_loop(void* data)
       if(ocsched_recvfrom(worker->ctx, recvBuf, 4096) > 0)
       {
         debug("recieved \"%s\"",recvBuf);
-        ocworker_deserialize_job(worker->cur_job, recvBuf);
+        deserialize_job(worker->cur_job, recvBuf);
         worker->last_job = worker->cur_job;
         worker->cur_job = NULL;
       }
@@ -420,9 +356,9 @@ void* ocworker_schedule_worker(void* data)
     ListNode* job =  ocutils_list_head(ctx->jobs);
     if (job != NULL) {
       // Check if we need to load a new file into our memfd
-      if (((ocworkerJob*)job->value)->result->file_id != ctx->loadedfile) {
-        ocmemfd_load_file(ctx->memfd, ((ocworkerJob*)job->value)->result->file_id->path);
-        ctx->loadedfile = ((ocworkerJob*)job->value)->result->file_id;
+      if (((Job*)job->value)->result->file_id != ctx->loadedfile) {
+        ocmemfd_load_file(ctx->memfd, ((Job*)job->value)->result->file_id->path);
+        ctx->loadedfile = ((Job*)job->value)->result->file_id;
       }
     }
     else
@@ -432,7 +368,7 @@ void* ocworker_schedule_worker(void* data)
     }
 
     for (size_t i = 0; i < ctx->worker->items; i++) {
-      ocworkerJob* job = (ocworkerJob*) ocutils_list_dequeue(ctx->jobs);
+      Job*      job    = (Job*) ocutils_list_dequeue(ctx->jobs);
       ocworker* worker = (ocworker*)    ocutils_list_get(ctx->worker, i);
       worker->next_job = job;
     }
@@ -478,7 +414,7 @@ ocworkerStatus
 ocworker_schedule_job(ocworkerContext*  ctx, ocdataFile* file,
   ocdataCodec* codec, int64_t* jobid)
 {
-  ocworkerJob* newjob = calloc(1, sizeof(ocworkerJob));
+  Job* newjob = calloc(1, sizeof(Job));
 
   newjob->result          = ocdata_new_result(NULL, file, 0, 0, 0);
   newjob->result->comp_id = ocdata_new_comp(-1, codec, ocutils_list_create());
@@ -512,7 +448,7 @@ ocworker_schedule_jobs(ocworkerContext* ctx, ocdataFile* file,
 }
 
 ocworkerStatus
-ocworker_retrieve_job(ocworkerContext* ctx, int64_t jobid, ocworkerJob** job)
+ocworker_retrieve_job(ocworkerContext* ctx, int64_t jobid, Job** job)
 {
   return OCWORKER_OK;
 }
@@ -524,7 +460,7 @@ ocworker_retrieve_jobs(ocworkerContext* ctx, List* jobids, List** jobs)
 }
 
 ocworkerStatus
-ocworker_unref_job(ocworkerContext* ctx, ocworkerJob** job)
+ocworker_unref_job(ocworkerContext* ctx, Job** job)
 {
   return OCWORKER_OK;
 }

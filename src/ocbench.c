@@ -31,6 +31,7 @@
 #include "ocsched/ocsched.h"
 #include "ocdata/ocdata.h"
 #include "ocutils/list.h"
+#include "job.h"
 #include "ocworker.h"
 #include <squash/squash.h>
 
@@ -409,7 +410,7 @@ int main (int argc, char *argv[])
 
   ocdata_create_context(&myctx,databasePath,0);
 
-  ocutils_list_foreach_f(jobs, curjob,ocworkerJob*)
+  ocutils_list_foreach_f(jobs, curjob, Job*)
   {
     ocdata_add_result(myctx, curjob->result);
   }

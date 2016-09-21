@@ -18,19 +18,17 @@
  * @license GPL-2.0 <https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html>
  */
 
+#include "job.h"
 #include "ocsched/ocsched.h"
-#include "ocdata/ocdata.h"
 #include "ocmemfd/ocmemfd.h"
 #include <pthread.h>
 
 struct __ocworkerWatchdog;
 struct __ocworkerContext;
-struct __ocworkerJob;
 struct __ocworker;
 
 typedef struct __ocworkerWatchdog ocworkerWatchdog;
 typedef struct __ocworkerContext  ocworkerContext;
-typedef struct __ocworkerJob      ocworkerJob;
 typedef struct __ocworker         ocworker;
 
 #define OCWORKER_KILL_SIG 42
@@ -46,16 +44,11 @@ struct __ocworkerContext{
   pthread_mutex_t lock;
 };
 
-struct __ocworkerJob{
-  int64_t         jobid;
-  ocdataResult*   result;
-};
-
 struct __ocworker{
   ocschedProcessContext*  ctx;
-  ocworkerJob*            next_job;
-  ocworkerJob*            cur_job;
-  ocworkerJob*            last_job;
+  Job*            next_job;
+  Job*            cur_job;
+  Job*            last_job;
   int64_t                 status;
   pthread_t               watchdog;
 };
@@ -101,7 +94,7 @@ ocworkerStatus
 ocworker_retrieve_job(
   ocworkerContext*  ctx,
   int64_t           jobid,
-  ocworkerJob**     job
+  Job**     job
 );
 
 ocworkerStatus
@@ -114,7 +107,7 @@ ocworker_retrieve_jobs(
 ocworkerStatus
 ocworker_unref_job(
   ocworkerContext*  ctx,
-  ocworkerJob**     job
+  Job**     job
 );
 
 ocworkerStatus
