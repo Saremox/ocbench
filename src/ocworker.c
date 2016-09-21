@@ -21,15 +21,18 @@
 #include <stdlib.h>
 #include <time.h>
 #include <wait.h>
+#include <setjmp.h>
 #include "ocworker.h"
 #include "debug.h"
 #include "ocsched/ocsched.h"
 #include "ocutils/list.h"
+#include "ocutils/timer.h"
 #include <squash/squash.h>
 
 #define MINIMUM_RUN_TIME 1000*1000
 
 int got_killed = 0; // Used by worker processes
+jmp_buf buf;
 
 char* ocworker_serialize_job(ocworkerJob* job)
 {
@@ -108,9 +111,76 @@ void ocworker_worker_process_signalhandler(int signl)
       break;
     case SIGSEGV:
       log_warn("Worker[%d] got segfault",getpid());
-
+      longjmp(buf, 1);
       break;
   }
+}
+
+ocworkerStatus ocworker_worker_compression(ocworkerJob* myJob,
+                                           SquashCodec* myCodec,
+                                           ocMemfdContext* original,
+                                           ocMemfdContext* compressed)
+{
+  struct timespec begin,end;
+  int iterations = 0;
+  myJob->result->compressed_size = compressed->size;
+  myJob->result->compressed_time = 0;
+  Timer* myTimer = ocutils_timer_create();
+
+  for ( ; myJob->result->compressed_time < MINIMUM_RUN_TIME; iterations++) {
+    ocutils_timer_start(myTimer);
+    int ret = squash_codec_compress(myCodec,
+                                    &myJob->result->compressed_size,
+                                    compressed->buf,
+                                    original->size,
+                                    original->buf,
+                                    NULL);
+    ocutils_timer_stop(myTimer);
+    myJob->result->compressed_time += ocutils_timer_get_usecs(myTimer);
+
+    check(ret == SQUASH_OK,"failed to compress data with %s [%d] : %s",
+      myJob->result->comp_id->codec_id->name,
+      ret,squash_status_to_string(ret));
+  }
+
+  myJob->result->compressed_time /= iterations;
+  return OCWORKER_OK;
+error:
+  return OCWORKER_FAILURE;
+}
+
+ocworkerStatus ocworker_worker_decompression(ocworkerJob* myJob,
+                                             SquashCodec* myCodec,
+                                             ocMemfdContext* compressed,
+                                             ocMemfdContext* decompressed)
+{
+  struct timespec begin,end;
+  int iterations = 0;
+  size_t decompressedsize;
+  myJob->result->decompressed_time = 0;
+  Timer* myTimer = ocutils_timer_create();
+
+  for ( ; myJob->result->decompressed_time < MINIMUM_RUN_TIME; iterations++) {
+    decompressedsize = decompressed->size;
+    ocutils_timer_start(myTimer);
+    int ret = squash_codec_decompress(myCodec,
+                                      &decompressedsize,
+                                      decompressed->buf,
+                                      myJob->result->compressed_size,
+                                      compressed->buf,
+                                      NULL);
+    ocutils_timer_stop(myTimer);
+    myJob->result->decompressed_time += ocutils_timer_get_usecs(myTimer);
+
+    check(ret == SQUASH_OK,"failed to decompress data with %s [%d] : %s",
+      myJob->result->comp_id->codec_id->name,
+      ret,squash_status_to_string(ret));
+  }
+
+  myJob->result->decompressed_time /= iterations;
+  return OCWORKER_OK;
+error:
+  return OCWORKER_FAILURE;
 }
 
 void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
@@ -129,11 +199,21 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
   signal(SIGINT, ocworker_worker_process_signalhandler);
   signal(OCWORKER_KILL_SIG, ocworker_worker_process_signalhandler);
 
-  ocMemfdContext* orignal = (ocMemfdContext *) data;
+  ocMemfdContext* original = (ocMemfdContext *) data;
   ocMemfdContext* compressed   = ocmemfd_create_context(namecp,4096);
-  ocMemfdContext* decompressed = ocmemfd_create_context(namedcp,orignal->size);
+  ocMemfdContext* decompressed = ocmemfd_create_context(namedcp,4096);
 
   char   recvBuf[4096];
+
+  if(setjmp(buf))
+  {
+    log_info("Try graceful termination of worker[%d] after segfault",getpid());
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGSEGV);
+    sigprocmask(SIG_UNBLOCK, &sigset, NULL);
+    goto error;
+  }
 
   while (true) {
     if(got_killed == 1)
@@ -147,71 +227,27 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
       debug("recieved \"%s\"",recvBuf);
       ocworker_deserialize_job(recvjob, recvBuf);
       // resize shared memfd buffer to file size
-      int oldsize = orignal->size;
-      orignal->size = recvjob->result->file_id->size;
-      ocmemfd_remap_buffer(orignal,oldsize);
+      int oldsize = original->size;
+      original->size = recvjob->result->file_id->size;
+      ocmemfd_remap_buffer(original,oldsize);
 
       SquashCodec* codec =
         squash_get_codec(recvjob->result->comp_id->codec_id->name);
       check(codec != NULL, "squash cannot find \"%s\" codec",
         recvjob->result->comp_id->codec_id->name);
 
-      ocmemfd_resize(decompressed, orignal->size);
+      ocmemfd_resize(decompressed, original->size);
       ocmemfd_resize(compressed,
-        squash_codec_get_max_compressed_size(codec,orignal->size));
-      recvjob->result->compressed_size = compressed->size;
+        squash_codec_get_max_compressed_size(codec,original->size));
 
-      recvjob->result->compressed_time = 0;
-      int iterations = 0;
+      check(
+        ocworker_worker_compression(recvjob, codec, original, compressed)
+        == OCWORKER_OK, "Failed to compress");
 
-      for ( ; recvjob->result->compressed_time < MINIMUM_RUN_TIME; iterations++) {
-        struct timespec begin,end;
+      check(
+        ocworker_worker_decompression(recvjob, codec, compressed, decompressed)
+        == OCWORKER_OK, "Failed to decompress");
 
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&begin);
-        int ret = squash_codec_compress(codec,
-                                        &recvjob->result->compressed_size,
-                                        compressed->buf,
-                                        orignal->size,
-                                        orignal->buf,
-                                        NULL);
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
-
-        int64_t secs = end.tv_sec - begin.tv_sec;
-        int64_t usecs = end.tv_nsec - begin.tv_nsec;
-
-        recvjob->result->compressed_time += secs*1000*1000 + usecs/1000;
-
-        check(ret == SQUASH_OK,"failed to compress data with %s [%d] : %s",
-          recvjob->result->comp_id->codec_id->name,
-          ret,squash_status_to_string(ret));
-      }
-
-      recvjob->result->compressed_time /= iterations;
-      iterations = 0;
-
-      for ( ; recvjob->result->decompressed_time < MINIMUM_RUN_TIME; iterations++) {
-        struct timespec begin,end;
-
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&begin);
-        int ret = squash_codec_decompress(codec,
-                                        &decompressed->size,
-                                        decompressed->buf,
-                                        recvjob->result->compressed_size,
-                                        compressed->buf,
-                                        NULL);
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&end);
-
-        int64_t secs = end.tv_sec - begin.tv_sec;
-        int64_t usecs = end.tv_nsec - begin.tv_nsec;
-
-        recvjob->result->decompressed_time += secs*1000*1000 + usecs/1000;
-
-        check(ret == SQUASH_OK,"failed to decompress data with %s [%d] : %s",
-          recvjob->result->comp_id->codec_id->name,
-          ret,squash_status_to_string(ret));
-      }
-
-      recvjob->result->decompressed_time /= iterations;
 
       // Early resource freeing
       ocmemfd_resize(compressed, 4096);
@@ -234,14 +270,14 @@ void ocworker_worker_process_loop(ocschedProcessContext* ctx, void* data)
   ocdata_garbage_collect();
   ocmemfd_destroy_context(&compressed);
   ocmemfd_destroy_context(&decompressed);
-  ocmemfd_destroy_context(&orignal);
+  ocmemfd_destroy_context(&original);
   free(namecp);
   free(namedcp);
   exit(EXIT_SUCCESS);
 error:
   ocmemfd_destroy_context(&compressed);
   ocmemfd_destroy_context(&decompressed);
-  ocmemfd_destroy_context(&orignal);
+  ocmemfd_destroy_context(&original);
   kill(getpid(),SIGKILL);
 }
 
@@ -278,17 +314,33 @@ void* ocworker_worker_watchdog_loop(void* data)
 
     if(WIFSIGNALED(child_status))
     {
-      log_warn("Watchdog[%d] CHILD HUNG: %d CODEC: %s JOBID: %ld",
-        worker->ctx->pid,
-        WTERMSIG(child_status),
-        worker->cur_job->result->comp_id->codec_id->name,
-        worker->cur_job->jobid);
-      // Try to reanimate child
-      worker->next_job = worker->cur_job;
-      worker->cur_job  = NULL;
-      worker->ctx =
-        ocsched_fork_process( ocworker_worker_process_loop,"worker",
-                              wdctx->ctx->memfd);
+      if(worker->cur_job == NULL)
+      {
+        log_err("Watchdog[%d] FATAL: CHILD HUNG WITH %d WITH NO JOB ASSIGNED",
+          worker->ctx->pid,
+          WTERMSIG(child_status));
+        log_err("Watchdog[%d] CAN NOT RECOVER WORKER STATE. EXITING",
+          worker->ctx->pid);
+        goto killWatchdog;
+      }
+      else
+      {
+        log_warn("Watchdog[%d] CHILD HUNG: %d CODEC: %s JOBID: %ld",
+          worker->ctx->pid,
+          WTERMSIG(child_status),
+          worker->cur_job->result->comp_id->codec_id->name,
+          worker->cur_job->jobid);
+        // Try to reanimate child
+        worker->next_job = worker->cur_job;
+        worker->cur_job  = NULL;
+
+        // Destroy old context with open fd
+        ocsched_destroy_context(&worker->ctx);
+
+        worker->ctx =
+          ocsched_fork_process( ocworker_worker_process_loop,"worker",
+                                wdctx->ctx->memfd);
+      }
     }
     // Job transfer
     if (worker->cur_job == NULL && worker->next_job != NULL &&
