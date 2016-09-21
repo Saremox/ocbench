@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include <time.h>
+
 #ifndef OCUTILS_TIMER_H
 #define OCUTILS_TIMER_H
 
