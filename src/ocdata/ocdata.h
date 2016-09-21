@@ -20,6 +20,7 @@
 
 #include <sqlite3.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "ocutils/list.h"
 
 #ifndef OCDATA_H
