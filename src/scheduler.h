@@ -23,39 +23,23 @@
 #include "ocmemfd/ocmemfd.h"
 #include <pthread.h>
 
-struct __ocworkerWatchdog;
-struct __ocworkerContext;
-struct __ocworker;
+#ifndef OCWORKER_H
+#define OCWORKER_H
 
-typedef struct __ocworkerWatchdog ocworkerWatchdog;
-typedef struct __ocworkerContext  ocworkerContext;
-typedef struct __ocworker         ocworker;
+struct __schedulerContext;
 
-#define OCWORKER_KILL_SIG 42
+typedef struct __schedulerContext  schedulerContext;
 
-struct __ocworkerContext{
+
+struct __schedulerContext{
   int64_t         lastjobid;
   List*           jobs;
   List*           jobsDone;
-  List*           worker;
+  List*           watchdogs;
   ocdataFile*     loadedfile;
   ocMemfdContext* memfd;
   pthread_t       scheduler;
   pthread_mutex_t lock;
-};
-
-struct __ocworker{
-  ocschedProcessContext*  ctx;
-  Job*            next_job;
-  Job*            cur_job;
-  Job*            last_job;
-  int64_t                 status;
-  pthread_t               watchdog;
-};
-
-struct __ocworkerWatchdog{
-  ocworkerContext*  ctx;
-  ocworker*         myworker;
 };
 
 typedef enum __ocworkerStatus{
@@ -70,12 +54,12 @@ typedef enum __ocworkerStatus{
 ocworkerStatus
 ocworker_start(
   int               worker_amt,
-  ocworkerContext** ctx
+  schedulerContext** ctx
 );
 
 ocworkerStatus
 ocworker_schedule_job(
-  ocworkerContext*  ctx,
+  schedulerContext*  ctx,
   ocdataFile*       file,
   ocdataCodec*      codec,
   int64_t*          jobid
@@ -83,7 +67,7 @@ ocworker_schedule_job(
 
 ocworkerStatus
 ocworker_schedule_jobs(
-  ocworkerContext*  ctx,
+  schedulerContext*  ctx,
   ocdataFile*       file,
   List*             codecs,
   List**            jobids
@@ -92,35 +76,38 @@ ocworker_schedule_jobs(
 
 ocworkerStatus
 ocworker_retrieve_job(
-  ocworkerContext*  ctx,
+  schedulerContext*  ctx,
   int64_t           jobid,
   Job**     job
 );
 
 ocworkerStatus
 ocworker_retrieve_jobs(
-  ocworkerContext*  ctx,
+  schedulerContext*  ctx,
   List*             jobids,
   List**            jobs
 );
 
 ocworkerStatus
 ocworker_unref_job(
-  ocworkerContext*  ctx,
+  schedulerContext*  ctx,
   Job**     job
 );
 
 ocworkerStatus
 ocworker_is_running(
-  ocworkerContext* ctx
+  schedulerContext* ctx
 );
 
 ocworkerStatus
 ocworker_kill(
-  ocworkerContext*  ctx
+  schedulerContext*  ctx
 );
 
 ocworkerStatus
 ocworker_force_kill(
-  ocworkerContext*  ctx
+  schedulerContext*  ctx
 );
+
+
+#endif

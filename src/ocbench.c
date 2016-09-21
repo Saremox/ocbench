@@ -32,7 +32,7 @@
 #include "ocdata/ocdata.h"
 #include "ocutils/list.h"
 #include "job.h"
-#include "ocworker.h"
+#include "scheduler.h"
 #include <squash/squash.h>
 
 
@@ -49,7 +49,7 @@ int               verbosityLevel  = OCDEBUG_WARN;
 List*             files;
 List*             codecList;
 List*             jobs;
-ocworkerContext*  workerctx = NULL;
+schedulerContext*  workerctx = NULL;
 ocdataContext*    myctx     = NULL;
 int               shutdown_request = 0;
 
