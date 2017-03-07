@@ -428,6 +428,9 @@ int main (int argc, char *argv[])
   parse_arguments(argc,argv);
   debug("Loaded Squash Version: %s",squash_version_api());
 
+  check(ocdata_create_context(&myctx,databasePath,0) == OCDATA_SUCCESS,
+    "Failed to create database file. Exiting");
+
   ocworker_start(worker,&workerctx);
 
   // Register Signal handler
@@ -438,7 +441,23 @@ int main (int argc, char *argv[])
   codecList = ocutils_list_create();
 
   parse_dir(directoryPath, files);
+
+  // commit every file to database
+
+  ocutils_list_foreach_f(files, dbfile, ocdataFile*)
+  {
+    ocdata_add_file(myctx,dbfile);
+  }
+
   parse_codecs(codecs,codecList);
+
+  // commit every codec to database
+
+  ocutils_list_foreach_f(codecList, dbcodec, ocdataCodec*)
+  {
+    ocdata_add_codec(myctx,dbcodec);
+  }
+
   if(verbosityLevel == OCDEBUG_DEBUG)
   {
     ocutils_list_foreach_f(codecList, curCodec, ocdataCodec*)
@@ -475,8 +494,6 @@ int main (int argc, char *argv[])
   ocworker_kill(workerctx);
 
   jobs   = workerctx->jobsDone;
-
-  ocdata_create_context(&myctx,databasePath,0);
 
   ocutils_list_foreach_f(jobs, curjob, Job*)
   {
