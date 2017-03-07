@@ -162,9 +162,16 @@ void worker_main(ocschedProcessContext* ctx, void* data)
       int oldsize = original->size;
       original->size = recvjob->result->file_id->size;
       ocmemfd_remap_buffer(original,oldsize);
-
+      
+      SquashPlugin* plugin =
+        squash_get_plugin(recvjob->result->comp_id->codec_id->plugin_id->name);
+      
+      check(plugin != NULL, "squash cannot find \"%s\" plugin",
+        recvjob->result->comp_id->codec_id->plugin_id->name);
+      
       SquashCodec* codec =
-        squash_get_codec(recvjob->result->comp_id->codec_id->name);
+        squash_plugin_get_codec(plugin,
+          recvjob->result->comp_id->codec_id->name);
       check(codec != NULL, "squash cannot find \"%s\" codec",
         recvjob->result->comp_id->codec_id->name);
 
