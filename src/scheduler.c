@@ -77,9 +77,12 @@ void* scheduler_main(void* data)
     }
 
     for (size_t i = 0; i < ctx->watchdogs->items; i++) {
-      Job*      job       = (Job*) ocutils_list_dequeue(ctx->jobs);
-      WatchdogContext* watchdog  = (WatchdogContext*)    ocutils_list_get(ctx->watchdogs, i);
-      watchdog->myworker->next_job = job;
+		job =  ocutils_list_head(ctx->jobs);
+		if (((Job*)job->value)->result->file_id == ctx->loadedfile) {
+			Job*      job       = (Job*) ocutils_list_dequeue(ctx->jobs);
+			WatchdogContext* watchdog  = (WatchdogContext*)    ocutils_list_get(ctx->watchdogs, i);
+			watchdog->myworker->next_job = job;
+		}
     }
     unlock_mutex:
     pthread_mutex_unlock(&ctx->lock);
