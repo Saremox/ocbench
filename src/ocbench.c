@@ -49,7 +49,7 @@ int               verbosityLevel  = OCDEBUG_WARN;
 List*             files;
 List*             codecList;
 List*             jobs;
-schedulerContext*  workerctx = NULL;
+schedulerContext* workerctx = NULL;
 ocdataContext*    myctx     = NULL;
 int               shutdown_request = 0;
 

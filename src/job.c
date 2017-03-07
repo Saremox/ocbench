@@ -77,7 +77,7 @@ int32_t deserialize_job(Job* job, char* serialized_str)
     job->result->comp_id->codec_id = ocdata_new_codec(-1, NULL, codecname);
     job->result->comp_id->codec_id->plugin_id = ocdata_new_plugin(-1,pluginname);
   }
-    
+
 
   job->result->compressed_size   = atoi(strtok(NULL, ";"));
   job->result->compressed_time   = atoi(strtok(NULL, ";"));

@@ -17,7 +17,7 @@
  *
  * @license GPL-2.0 <https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html>
  */
- 
+
 #include <unistd.h>
 #include <linux/memfd.h>
 #include <sys/syscall.h>

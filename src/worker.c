@@ -162,13 +162,13 @@ void worker_main(ocschedProcessContext* ctx, void* data)
       int oldsize = original->size;
       original->size = recvjob->result->file_id->size;
       ocmemfd_remap_buffer(original,oldsize);
-      
+
       SquashPlugin* plugin =
         squash_get_plugin(recvjob->result->comp_id->codec_id->plugin_id->name);
-      
+
       check(plugin != NULL, "squash cannot find \"%s\" plugin",
         recvjob->result->comp_id->codec_id->plugin_id->name);
-      
+
       SquashCodec* codec =
         squash_plugin_get_codec(plugin,
           recvjob->result->comp_id->codec_id->name);
@@ -178,7 +178,7 @@ void worker_main(ocschedProcessContext* ctx, void* data)
       ocmemfd_resize(decompressed, original->size);
       ocmemfd_resize(compressed,
         squash_codec_get_max_compressed_size(codec,original->size)*41/40);
-        
+
       debug("Allocated Buffers:");
       debug("\toriginal    : %d k",original->size/1024);
       debug("\tcompressed  : %d k",compressed->size/1024);
