@@ -55,11 +55,11 @@ workerStatus worker_compression(Job* myJob,
 {
   struct timespec begin,end;
   int iterations = 0;
-  myJob->result->compressed_size = compressed->size;
   myJob->result->compressed_time = 0;
   Timer* myTimer = ocutils_timer_create();
 
   for ( ; myJob->result->compressed_time < MINIMUM_RUN_TIME; iterations++) {
+    myJob->result->compressed_size = compressed->size;
     ocutils_timer_start(myTimer);
     int ret = squash_codec_compress(myCodec,
                                     &myJob->result->compressed_size,
