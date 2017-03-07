@@ -36,6 +36,11 @@
 #include "scheduler.h"
 #include <squash/squash.h>
 
+struct addlist_foreach_args{
+  ocdataPlugin* plugin;
+  List* list;
+};
+
 
 // options
 
@@ -75,6 +80,7 @@ void print_help(char* programname)
 "                       Default: 1\n"
 "  -m, --memory         INT [MB] ammount of RAM available for buffers \n"
 "                       Default: INF\n"
+"  -C, --list-codecs    Display all plugins and codecs available\n\n"
 "  -v, --verbose        more verbosity equals --log-level=2\n"
 "  -q  --quiet          log only errors equals --log-level=0\n"
 "  -l, --log-level      INT 0 LOG_ERR\n"
@@ -124,6 +130,29 @@ printf(
 "Foundation, Inc.,""51 Franklin Street, Fifth Floor, Boston, \n"
 "MA 02110-1301, USA.\n");
 exit(EXIT_SUCCESS);
+}
+
+void printf_squash_codec_for_each_callback(SquashCodec * codec, void* data)
+{
+	fprintf(stderr,"%s ,",squash_codec_get_name(codec));
+}
+
+void printf_squash_plugin_for_each_callback(SquashPlugin * plugin, void* data)
+{
+	fprintf(stderr,"%12s : ",squash_plugin_get_name(plugin));
+	squash_plugin_foreach_codec(plugin,printf_squash_codec_for_each_callback,NULL);
+	fprintf(stderr,"\n");
+}
+
+void list_codecs()
+{
+	fprintf(stderr,"Listing all loaded plugins and codecs\n");
+	fprintf(stderr,"%12s | Codecs\n","Plugins");
+	SquashContext * ctx = squash_context_get_default();
+	squash_context_foreach_plugin(ctx,
+		printf_squash_plugin_for_each_callback,
+		NULL);
+	exit(EXIT_SUCCESS);
 }
 
 
@@ -192,11 +221,37 @@ bool parse_dir(char* path, List* files)
   return true;
 }
 
+void addlist_squash_codec_for_each_callback(SquashCodec * codec, void* data)
+{
+  struct addlist_foreach_args* args = (struct addlist_foreach_args*) data;
+
+  ocutils_list_add(args->list,ocdata_new_codec(
+    -1,args->plugin,squash_codec_get_name(codec)));
+}
+
+void addlist_squash_plugin_for_each_callback(SquashPlugin * plugin, void* data)
+{
+  struct addlist_foreach_args args =
+      {ocdata_new_plugin(-1,squash_plugin_get_name(plugin)),data};
+
+	squash_plugin_foreach_codec(plugin,addlist_squash_codec_for_each_callback,&args);
+}
+
 void parse_codecs(char* codecstring, List* codecList)
 {
   char*  copycodecs    = malloc(strlen(codecstring)+1);
                          memcpy(copycodecs, codecstring, strlen(codecstring)+1);
   List*  pluginstrings = ocutils_list_create();
+
+  if(strcmp(codecstring, "all") == 0)
+  {
+    debug("Adding all codecs and plugins");
+    SquashContext * ctx = squash_context_get_default();
+    squash_context_foreach_plugin(ctx,
+                                  addlist_squash_plugin_for_each_callback,
+                                  codecList);
+    return;
+  }
 
   // Reading plugin string
   char* curptr = strtok(copycodecs, ",");
@@ -255,6 +310,7 @@ void parse_arguments(int argc, char *argv[])
         {"directory",       required_argument, 0, 'd'},
         {"transactionlog",  required_argument, 0, 't'},
         {"log-level",       required_argument, 0, 'l'},
+        {"list-codecs",		no_argument,	   0, 'C'},
         {"verbose",         no_argument,       0, 'v'},
         {"quiet",           no_argument,       0, 'q'},
         {"license",         no_argument,       0, 'L'},
@@ -283,6 +339,8 @@ void parse_arguments(int argc, char *argv[])
       worker = atoi(optarg);
       check(worker > 0, "cpu count must be greater than 0");
       break;
+    case 'C':
+	  list_codecs();
     case 'm':
       debug("Setting memory count to: \"%s\"",optarg);
       //worker = atoi(optarg);
