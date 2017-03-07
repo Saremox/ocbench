@@ -20,6 +20,7 @@
 
 #include <dirent.h>
 #include <getopt.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -43,6 +44,7 @@ char*             databasePath    = "ocbench.sqlite";
 char*             directoryPath   = "./";
 char*             codecs          = "bzip2:bzip2,lzma:xz,zlib:gzip";
 int               worker          = 1;
+long              memoryLimit     = LONG_MAX;
 int               verbosityLevel  = OCDEBUG_WARN;
 
 // Globals
@@ -69,8 +71,10 @@ void print_help(char* programname)
 "  -c, --codecs         STRING comma seperated list of codecs which will\n"
 "                       be used. Format: \"plugin:codec;codec,plugin:...\"\n"
 "                       Default: \"bzip2:bzip2,lzma:xz,zlib:gzip\"\n"
-"  -w, --Worker         INT ammount of worker processes.\n"
-"                       Default: 1\n\n"
+"  -n, --cpus           INT ammount of cpu processors available for usage\n"
+"                       Default: 1\n"
+"  -m, --memory         INT [MB] ammount of RAM available for buffers \n"
+"                       Default: INF\n"
 "  -v, --verbose        more verbosity equals --log-level=2\n"
 "  -q  --quiet          log only errors equals --log-level=0\n"
 "  -l, --log-level      INT 0 LOG_ERR\n"
@@ -246,7 +250,8 @@ void parse_arguments(int argc, char *argv[])
     static struct option long_options[] = {
         {"codecs",          required_argument, 0, 'c'},
         {"database",        required_argument, 0, 'D'},
-        {"worker",          required_argument, 0, 'w'},
+        {"cpus",            required_argument, 0, 'n'},
+        {"memory",          required_argument, 0, 'm'},
         {"directory",       required_argument, 0, 'd'},
         {"transactionlog",  required_argument, 0, 't'},
         {"log-level",       required_argument, 0, 'l'},
@@ -259,7 +264,7 @@ void parse_arguments(int argc, char *argv[])
         {0,                 0,                 0,  0 }
     };
 
-    c = getopt_long(argc, argv, "c:D:w:d:t:l:vqLhuV",
+    c = getopt_long(argc, argv, "c:D:n:m:d:t:l:CvqLhuV",
              long_options, &option_index);
     if (c == -1)
       break;
@@ -273,10 +278,15 @@ void parse_arguments(int argc, char *argv[])
       debug("Setting Database file to: \"%s\"",optarg);
       databasePath = optarg;
       break;
-    case 'w':
-      debug("Setting Worker count to: \"%s\"",optarg);
+    case 'n':
+      debug("Setting cpu count to: \"%s\"",optarg);
       worker = atoi(optarg);
-      check(worker > 0, "Worker count must be greater than 0");
+      check(worker > 0, "cpu count must be greater than 0");
+      break;
+    case 'm':
+      debug("Setting memory count to: \"%s\"",optarg);
+      //worker = atoi(optarg);
+      check(worker > 0, "memory count must be greater than 0");
       break;
     case 'd':
       debug("Setting directory for analysis to: \"%s\"",optarg);
