@@ -29,7 +29,7 @@
 #include "watchdog.h"
 #include "worker.h"
 
-void* ocworker_schedule_worker(void* data)
+void* scheduler_main(void* data)
 {
   schedulerContext* ctx = (schedulerContext*) data;\
 
@@ -112,7 +112,7 @@ ocworker_start(int worker_amt, schedulerContext** ctx)
 
   pthread_mutex_init(&myctx->lock, NULL);
 
-  pthread_create(&myctx->scheduler, NULL, ocworker_schedule_worker, myctx);
+  pthread_create(&myctx->scheduler, NULL, scheduler_main, myctx);
 
   *ctx = myctx;
 
