@@ -25,10 +25,11 @@
 
 char* serialize_job(Job* job)
 {
-  char* fmt_str  = "BEGIN;%ld;%ld;%s;%ld;%ld;%ld;END";
+  char* fmt_str  = "BEGIN;%ld;%ld;%s;%s;%ld;%ld;%ld;END";
   size_t strsize = snprintf(NULL,0,fmt_str,
     job->jobid,
     job->result->file_id->size,
+    job->result->comp_id->codec_id->plugin_id->name,
     job->result->comp_id->codec_id->name,
     job->result->compressed_size,
     job->result->compressed_time,
@@ -37,6 +38,7 @@ char* serialize_job(Job* job)
               snprintf(ret, strsize, fmt_str,
                 job->jobid,
                 job->result->file_id->size,
+                job->result->comp_id->codec_id->plugin_id->name,
                 job->result->comp_id->codec_id->name,
                 job->result->compressed_size,
                 job->result->compressed_time,
@@ -64,13 +66,18 @@ int32_t deserialize_job(Job* job, char* serialized_str)
   if(job->result->file_id == NULL)
     job->result->file_id  = ocdata_new_file(-1, NULL, file_size);
 
+  char* pluginname = strtok(NULL, ";");
   char* codecname = strtok(NULL, ";");
 
   if(job->result->comp_id == NULL)
     job->result->comp_id = ocdata_new_comp(-1, NULL, NULL);
 
   if(job->result->comp_id->codec_id == NULL)
+  {
     job->result->comp_id->codec_id = ocdata_new_codec(-1, NULL, codecname);
+    job->result->comp_id->codec_id->plugin_id = ocdata_new_plugin(-1,pluginname);
+  }
+    
 
   job->result->compressed_size   = atoi(strtok(NULL, ";"));
   job->result->compressed_time   = atoi(strtok(NULL, ";"));
