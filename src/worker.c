@@ -177,7 +177,12 @@ void worker_main(ocschedProcessContext* ctx, void* data)
 
       ocmemfd_resize(decompressed, original->size);
       ocmemfd_resize(compressed,
-        squash_codec_get_max_compressed_size(codec,original->size));
+        squash_codec_get_max_compressed_size(codec,original->size)*41/40);
+        
+      debug("Allocated Buffers:");
+      debug("\toriginal    : %d k",original->size/1024);
+      debug("\tcompressed  : %d k",compressed->size/1024);
+      debug("\tdecompressed: %d k",decompressed->size/1024);
 
       check(
         worker_compression(recvjob, codec, original, compressed)
