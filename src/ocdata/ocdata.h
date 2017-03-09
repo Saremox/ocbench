@@ -122,6 +122,16 @@ ocdata_get_id(
   int64_t* id_ptr
 );
 
+ocdataStatus
+ocdata_get_id_with_condition(
+  ocdataContext* ctx, 
+  char* table,
+  char* field, 
+  char* value, 
+  int64_t* id_ptr, 
+  char* extra_condition
+);
+
 void ocdata_free_file         (ocdataFile*              file);
 void ocdata_free_plugin       (ocdataPlugin*            plugin);
 void ocdata_free_codec        (ocdataCodec*             codec);

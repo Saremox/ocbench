@@ -192,19 +192,34 @@ ocdataStatus
 ocdata_get_id(ocdataContext* ctx, char* table,
   char* field, char* value, int64_t* id_ptr)
 {
+  return ocdata_get_id_with_condition(ctx,table,field,value,id_ptr,NULL);
+}
+
+ocdataStatus
+ocdata_get_id_with_condition(ocdataContext* ctx, char* table,
+  char* field, char* value, int64_t* id_ptr, char* extra_condition)
+{  
   int           foundids  = 0;
   int           ret       = SQLITE_OK;
   sqlite3_stmt* querry    = NULL;
-  char*         fmtquerry = "SELECT rowid FROM %s WHERE %s = \"%s\";";
+  char*         fmtquerry;
+  if(extra_condition == NULL)
+  {
+	fmtquerry = "SELECT rowid FROM %s WHERE %s = \"%s\" ;";
+	extra_condition = "";
+  }
+  else
+    fmtquerry = "SELECT rowid FROM %s WHERE %s = \"%s\" AND %s ;";
   int           maxlen    = strlen(fmtquerry) +
                             strlen(table) +
                             strlen(field) +
-                            strlen(value);
+                            strlen(value) +
+                            strlen(extra_condition);
 
   char* sql = calloc(maxlen,1);
   check(sql > 0, "cannot allocate string buffer");
-  sprintf(sql,fmtquerry,table,field,value);
-
+  sprintf(sql,fmtquerry,table,field,value,extra_condition);
+  debug("%s",sql);
   ret = sqlite3_prepare_v2(ctx->db, sql , -1 , &querry, NULL);
   check(ret == SQLITE_OK, "failed to prepare statement: %s",
     sqlite3_errmsg(ctx->db));
@@ -539,17 +554,26 @@ ocdata_add_codec(ocdataContext* ctx, ocdataCodec* codec)
   int ret = SQLITE_OK;
   check(codec->name > 0, "invalid codec name");
   check(codec->plugin_id > 0, "invalid plugin pointer");
-
-  // check if entry allready exists
-  ocdataStatus st = ocdata_get_id(ctx, "codec", "name",
-    codec->name, &codec->codec_id);
-  if(st == OCDATA_SUCCESS)
-    return OCDATA_SUCCESS;
-
+  
   // get plugin id or instert it into db
   ret = ocdata_add_plugin(ctx,codec->plugin_id);
   check(ret == OCDATA_SUCCESS, "failed to get plugin id or insert plugin");
   check(codec->plugin_id->plugin_id > 0, "invalid plugin id.");
+
+  debug("plugin id is %ld" ,codec->plugin_id->plugin_id);
+
+  char* fmtstring = "plugin_id = %ld";
+  int	fmtlen	  = snprintf(NULL,0,fmtstring,codec->plugin_id->plugin_id)+1;
+  char* condition = malloc(fmtlen);
+  snprintf(condition,fmtlen,fmtstring,codec->plugin_id->plugin_id);
+
+  // check if entry allready exists
+  ocdataStatus st = ocdata_get_id_with_condition(ctx, "codec", "name",
+    codec->name, &codec->codec_id,condition);
+  free(condition);
+  if(st == OCDATA_SUCCESS)
+    return OCDATA_SUCCESS;
+
   sqlite3_bind_int(ctx->codec_add, 1, codec->plugin_id->plugin_id);
   sqlite3_bind_text(ctx->codec_add, 2, codec->name,
     strlen(codec->name), SQLITE_STATIC);
