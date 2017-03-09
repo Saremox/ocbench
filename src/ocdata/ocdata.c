@@ -76,7 +76,8 @@ ocdata_create_tables(ocdataContext* ctx)
     "CREATE TABLE IF NOT EXISTS codec ("
     "   codec_id  INTEGER NOT NULL PRIMARY KEY,"
     "   plugin_id INTEGER NOT NULL,"
-    "   name      VARCHAR NOT NULL UNIQUE,"
+    "   name      VARCHAR NOT NULL,"
+    "   UNIQUE(plugin_id,name) "
     "   FOREIGN KEY(plugin_id) REFERENCES plugin(plugin_id));";
   ret = sqlite3_exec(ctx->db, codec_structure, 0 ,0, &err_msg);
   check(ret == SQLITE_OK, "failed to create table for codec: %s", err_msg);
