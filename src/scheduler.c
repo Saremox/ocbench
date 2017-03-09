@@ -45,7 +45,8 @@ void* scheduler_main(void* data)
       goto unlock_mutex;
     ocutils_list_foreach_f(ctx->watchdogs, curwatchdog, WatchdogContext*)
     {
-      if (curwatchdog->myworker->cur_job != NULL)
+      if (curwatchdog->myworker->cur_job != NULL || 
+          curwatchdog->myworker->next_job != NULL)
         running_jobs++;
     }
     if(running_jobs != 0)
