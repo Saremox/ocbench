@@ -40,6 +40,7 @@ void* watchdog_main(void* data)
                     snprintf(name, namesize, name_fmt, worker->ctx->pid);
 
   char   recvBuf[4096];
+  int    currentRetryCount = 0;
 
   pthread_setname_np(pthread_self(),name);
   while (true) {
@@ -84,6 +85,7 @@ void* watchdog_main(void* data)
         worker->ctx =
           ocsched_fork_process( worker_main,"worker",
                                 wdctx->ctx->memfd);
+        currentRetryCount++;
       }
     }
     // Job transfer
@@ -99,6 +101,8 @@ void* watchdog_main(void* data)
       ocsched_printf(worker->ctx, sendbuf);
       debug("Send \"%s\" to %d",sendbuf,worker->ctx->pid);
       free(sendbuf);
+      // Reset retry count to 0 since current benchmark succeeded
+      currentRetryCount = 0;
     }
     else if(worker->cur_job != NULL)
     {

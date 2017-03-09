@@ -24,6 +24,8 @@
 #include "scheduler.h"
 #include "worker.h"
 
+#define MAX_RETRY_COUNT 3
+
 typedef struct __WatchdogContext{
   schedulerContext* ctx;
   workerContext*    myworker;
