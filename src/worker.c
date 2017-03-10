@@ -69,7 +69,12 @@ workerStatus worker_compression(Job* myJob,
                                     NULL);
     ocutils_timer_stop(myTimer);
     myJob->result->compressed_time += ocutils_timer_get_usecs(myTimer);
-
+	if(iterations >= 1000)
+	{
+		log_warn("Too many iterations for codec: %s on job: %d",
+		         myJob->result->comp_id->codec_id->name,
+		         myJob->jobid);
+	}
     check(ret == SQUASH_OK,"failed to compress data with %s [%d] : %s",
       myJob->result->comp_id->codec_id->name,
       ret,squash_status_to_string(ret));
@@ -103,7 +108,12 @@ workerStatus worker_decompression(Job* myJob,
                                       NULL);
     ocutils_timer_stop(myTimer);
     myJob->result->decompressed_time += ocutils_timer_get_usecs(myTimer);
-
+	if(iterations >= 1000)
+	{
+		log_warn("Too many iterations for codec: %s on job: %d",
+		         myJob->result->comp_id->codec_id->name,
+		         myJob->jobid);
+	}
     check(ret == SQUASH_OK,"failed to decompress data with %s [%d] : %s",
       myJob->result->comp_id->codec_id->name,
       ret,squash_status_to_string(ret));
