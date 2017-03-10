@@ -71,21 +71,40 @@ void* watchdog_main(void* data)
       else
       {
         log_warn("WatchdogContext[%d] CHILD HUNG: %d CODEC: %s JOBID: %ld",
-          worker->ctx->pid,
-          WTERMSIG(child_status),
-          worker->cur_job->result->comp_id->codec_id->name,
-          worker->cur_job->jobid);
-        // Try to reanimate child
-        worker->next_job = worker->cur_job;
-        worker->cur_job  = NULL;
+              worker->ctx->pid,
+              WTERMSIG(child_status),
+              worker->cur_job->result->comp_id->codec_id->name,
+              worker->cur_job->jobid);
 
+        if(currentRetryCount < MAX_RETRY_COUNT)
+        {
+          log_info("WatchdogContext[%d] Retry Codec: %s with Jobid: %ld",
+            worker->ctx->pid,
+            worker->cur_job->result->comp_id->codec_id->name,
+            worker->cur_job->jobid);
+          worker->next_job = worker->cur_job;
+          worker->cur_job  = NULL;
+
+          currentRetryCount++;
+        }
+        else
+        {
+          log_err("WatchdogContext[%d] Giving up Codec: %s with Jobid: %ld",
+            worker->ctx->pid,
+            worker->cur_job->result->comp_id->codec_id->name,
+            worker->cur_job->jobid);
+          worker->next_job = NULL;
+          worker->cur_job  = NULL;
+          
+          currentRetryCount = 0;
+        }
+        
         // Destroy old context with open fd
         ocsched_destroy_context(&worker->ctx);
-
+        
         worker->ctx =
-          ocsched_fork_process( worker_main,"worker",
-                                wdctx->ctx->memfd);
-        currentRetryCount++;
+              ocsched_fork_process( worker_main,"worker",
+                                    wdctx->ctx->memfd);
       }
     }
     // Job transfer
@@ -101,8 +120,6 @@ void* watchdog_main(void* data)
       ocsched_printf(worker->ctx, sendbuf);
       debug("Send \"%s\" to %d",sendbuf,worker->ctx->pid);
       free(sendbuf);
-      // Reset retry count to 0 since current benchmark succeeded
-      currentRetryCount = 0;
     }
     else if(worker->cur_job != NULL)
     {
@@ -113,6 +130,8 @@ void* watchdog_main(void* data)
         deserialize_job(worker->cur_job, recvBuf);
         worker->last_job = worker->cur_job;
         worker->cur_job = NULL;
+        // Reset retry count to 0 since current benchmark succeeded
+        currentRetryCount = 0;
       }
       else
       {
