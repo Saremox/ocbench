@@ -74,6 +74,7 @@ workerStatus worker_compression(Job* myJob,
 		log_warn("Too many iterations for codec: %s on job: %d",
 		         myJob->result->comp_id->codec_id->name,
 		         myJob->jobid);
+		break;
 	}
     check(ret == SQUASH_OK,"failed to compress data with %s [%d] : %s",
       myJob->result->comp_id->codec_id->name,
@@ -113,6 +114,7 @@ workerStatus worker_decompression(Job* myJob,
 		log_warn("Too many iterations for codec: %s on job: %d",
 		         myJob->result->comp_id->codec_id->name,
 		         myJob->jobid);
+		break;
 	}
     check(ret == SQUASH_OK,"failed to decompress data with %s [%d] : %s",
       myJob->result->comp_id->codec_id->name,
